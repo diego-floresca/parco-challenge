@@ -41,7 +41,7 @@
   (50% del total); 458 alertas -> ~277 incidentes.
 - La columna `incidents` de New Relic ya empaqueta disparos casi simultáneos en una
   notificación (anti-spam). Distribución: 1->298, 2->131, 3->14, 4->6, 6->4, 7->2, null->3.
-  [ACEPTACIÓN] Suma ≈ 664 disparos reales en 455 mensajes: New Relic ya comprimió 31%
+  [ACEPTACIÓN] Suma ≈ 667 (con null→1; 664 sin los 3 PayPal) disparos reales en 455 mensajes: New Relic ya comprimió 31%
   antes que nosotros. Los valores altos (4-7) son cascadas critical de Throughput/CPU.
 
 ## 5. La jerarquía oculta entre columnas (pivotes)
