@@ -1,0 +1,55 @@
+# config.yaml — Todas las perillas del pipeline viven aquí, no en el código.
+# Ops puede ajustar este archivo sin tocar Python. Cada cambio es un commit auditable.
+
+pipeline:
+  ventana_rafaga_minutos: 30      # gap máximo entre alertas del mismo fingerprint para ser un incidente
+  recurrente_min_dias: 3          # días distintos para considerar un fingerprint "habitual"
+
+relojes:
+  # Campo de tiempo confiable por canal (ver docs/decisiones.md, juicio de relojes)
+  sre: ts
+  monitoring-ops-cx: timestamp
+  zona_horaria: "-06:00"
+
+score:
+  pesos:                          # v0 heurísticos, declarados; se recalibran con etiquetas (día 60+)
+    criticidad: 0.30
+    fuera_de_ficha: 0.25
+    rafaga: 0.20
+    intensidad: 0.15
+    novedad: 0.10
+  bandas:
+    P1: { min: 70, etiqueta: "Atiende ahora" }
+    P2: { min: 40, etiqueta: "Revisa hoy" }
+    P3: { min: 0,  etiqueta: "Informativo, no requiere acción" }
+  intensidad:
+    high: 0.5
+    critical: 1.0
+  boosts:
+    regla_anomalia_newrelic: 0.05   # threshold tipo "baseline": pre-curado por New Relic
+    direccion_bajo: 0.05            # reglas "<": degradación silenciosa (throughput cayendo)
+
+criticidad_servicios:
+  # 0.0 - 1.0. INFERIDA del propio dato; VALIDAR con el equipo en semana 0 (docs/supuestos.md)
+  default: 0.50
+  grupos:
+    pagos:    { valor: 1.00, servicios: [Hairs, Wallet_2.0, Transaction query, Chargehound, PayPal, Invoice] }
+    nucleo:   { valor: 0.80, servicios: [Orchestrator, Carts, Users, Access, Peajero] }
+    datos:    { valor: 0.60, servicios: [data-team] }
+    infra:    { valor: 0.50, servicios: []  }   # se llena por regla i-* / new-parco-instance-*
+    codename: { valor: 0.60, servicios: [tesseract, Cerberus, Princess, Kraken, Gigante, demo2] }
+    web:      { valor: 0.40, servicios: [Wiki, "Wordpress web page", "Web Page Parco"] }
+
+normalizacion:
+  typos_service:
+    Princes: Princess
+  reglas_grupo_infra:
+    - "^i-[0-9a-f]+$"               # IDs de instancias EC2
+    - "^new-parco-instance-\\d+$"
+  procesadores_conocidos: [Conekta, Mercadopago, PayPal]   # para extraer de error_message
+
+llm:
+  proveedor: gemini
+  modelo: gemini-2.5-flash
+  # GEMINI_API_KEY vía variable de entorno / .env — NUNCA en este archivo
+  habilitado_por_default: true      # pipeline degrada a plantilla determinista sin key o con --no-llm
