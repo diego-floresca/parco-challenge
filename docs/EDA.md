@@ -99,16 +99,28 @@ channel  <-  policy  <-  condition  <-  service
   vs Mié ~8. App de movilidad: el finde ES el pico de uso -> esperado bajo carga.
 - Grueso del volumen 13h–20h (horas pico de transacciones).
 
-## 9. Casos canónicos del score (valores esperados aproximados, pesos v0)
-| Caso | Componentes (crit/ficha/ráfaga/intens/nov) | Score esperado | Banda |
+## 9. Casos canónicos del score (valores del diseño coherente, pesos v0)
+
+| Caso | sc/sf/sr/si/sn | Score real | Banda |
 |---|---|---|---|
-| Hairs · Payments rejected hairs (en sre, 4 apariciones) | 1.0/0.9/0.2/0.5/0.9 | ~73 | P1 |
-| tesseract · High Application Error percentage | 0.7/0.9/0.4/1.0/0.9 | ~76 | P1 |
-| i-0d26dd… · Parco 2.0 Nodes CPU Usage | 0.5/0.6/0.5/1.0/0.4 | ~59 | P2 |
-| data-team · RDS CPU Usage ráfaga ~02h | 0.6/0.1/0.4/0.7/0.0 | ~39 | P3 |
-- Tolerancia: ±10 puntos (los componentes exactos dependen de la implementación de
-  normalización de ráfaga/ficha), pero el ORDEN y las bandas deben sostenerse.
-  El caso RDS es frontera P3/P2 deliberadamente: ejemplo de calibración futura.
+| Hairs · Payments rejected hairs (en sre) | 1.0/0.9/0.20/0.50/0.9 | 73 | P1 |
+| tesseract · High Application Error percentage | 0.6/0.9/0.20/1.0/0.9 | 68 | P2 |
+| i-0d26dd… · Parco 2.0 Nodes CPU Usage | 0.5/0.9/0.32/0.75/0.9 | 64 | P2 |
+| data-team · RDS CPU Usage ráfaga ~02h | 0.6/0.0/0.32/0.75/0.0 | 36 | P3 |
+
+Distribución real (277 incidentes): P1=16 (6%), P2=175 (63%), P3=86 (31%).
+
+**Reconciliación respecto a los valores originales de este EDA:**
+- Los valores anteriores (tesseract ~76 P1, data-team ~39 en frontera) asumían un boost
+  acumulativo de +0.05 por tipo_regla==anomalia. Ese boost fue eliminado al implementar
+  la capa de score porque duplicaba la señal ya capturada en s_intensidad=critical_anomalia=1.0.
+- tesseract landing en P2: correcto sin double-counting. s_ficha=0.9 (dias_visto=2 < 3)
+  + s_novedad=0.9 + s_intensidad=1.0 pero s_criticidad=0.6 (codename) → 68.
+- data-team landing en 36 P3: s_ficha=0.0 (completamente dentro del patrón nocturno: días=6,
+  hora 02h en horas_tipicas, n_alertas=1 ≤ rafaga_tipica). s_novedad=0.0 (recurrente). Sin
+  ambigüedad P3/P2: 36 es P3 claro. El equipo humano dirá "sí, eso es el ETL nocturno de siempre".
+- **El diseño manda sobre el número**: los scores son output del modelo coherente;
+  los números de este EDA se actualizan a lo que ese modelo produce, no al revés.
 
 ## 10. Veredicto del "80% es ruido"
 - Definición ingenua (repeticiones de ráfaga ∪ fingerprints recurrentes >=3 días): 89%

@@ -134,10 +134,10 @@ class TestGetProfile:
         assert result is None
 
     def test_wrong_channel_returns_none(self, profiles):
-        """Un fingerprint que existe en sre no se encuentra en cx."""
-        # Tomamos un fingerprint conocido de sre
-        sre_fp = profiles[profiles["channel"] == "sre"]["fingerprint"].iloc[0]
-        result = get_profile(profiles, "monitoring-ops-cx", sre_fp)
+        """Un fingerprint_key que existe en sre no se encuentra en cx."""
+        # Tomamos una fingerprint_key conocida de sre (para no-infra fp_key == fingerprint)
+        sre_fp_key = profiles[profiles["channel"] == "sre"]["fingerprint_key"].iloc[0]
+        result = get_profile(profiles, "monitoring-ops-cx", sre_fp_key)
         assert result is None
 
 

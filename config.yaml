@@ -4,6 +4,7 @@
 pipeline:
   ventana_rafaga_minutos: 30      # gap máximo entre alertas del mismo fingerprint para ser un incidente
   recurrente_min_dias: 3          # días distintos para considerar un fingerprint "habitual"
+  cronico_min_incidentes: 5       # episodios mínimos en el período para declarar un fingerprint "crónico activo"
 
 relojes:
   # Campo de tiempo confiable por canal (ver docs/decisiones.md, juicio de relojes)
@@ -24,10 +25,11 @@ score:
     P3: { min: 0,  etiqueta: "Informativo, no requiere acción" }
   intensidad:
     high: 0.5
-    critical: 1.0
+    critical_estatica: 0.75   # umbral estático: mide distancia al límite, no anomalía
+    critical_anomalia: 1.0    # umbral tipo baseline: New Relic certifica que es anómalo
+    null: 0.3                 # PayPal Status y registros sin priority
   boosts:
-    regla_anomalia_newrelic: 0.05   # threshold tipo "baseline": pre-curado por New Relic
-    direccion_bajo: 0.05            # reglas "<": degradación silenciosa (throughput cayendo)
+    direccion_bajo: 0.05      # reglas "<": degradación silenciosa (throughput cayendo)
 
 criticidad_servicios:
   # 0.0 - 1.0. INFERIDA del propio dato; VALIDAR con el equipo en semana 0 (docs/supuestos.md)
