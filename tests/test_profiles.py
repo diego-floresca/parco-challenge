@@ -156,8 +156,7 @@ class TestBuildProfilesSynthetic:
         assert p["dias_visto"] == 1
         assert 14 in p["horas_tipicas"]
         assert p["rafaga_tipica"] == 3.0
-        assert p["sello_finde"] is False  # 2025-06-01 es domingo... espera
-        # 2025-06-01: weekday = 6 (domingo) → sello_finde=True
+        # 2025-06-01 es domingo (weekday=6) → sello_finde=True
         assert p["sello_finde"] is True
 
     def test_sello_finde_weekday(self):

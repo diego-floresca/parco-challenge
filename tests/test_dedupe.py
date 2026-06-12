@@ -19,7 +19,7 @@ import pandas as pd
 
 from src.ingest import load
 from src.normalize import normalize
-from src.dedupe import dedupe, _priority_max, _n_disparos
+from src.dedupe import dedupe, _priority_max, _n_disparos, _group_service
 
 RAW_JSON = Path(__file__).parents[1] / "data" / "raw" / "alerts_combined.json"
 CONFIG_PATH = Path(__file__).parents[1] / "config.yaml"
@@ -103,6 +103,32 @@ def _cfg(ventana_min: int = 30) -> dict:
 # ---------------------------------------------------------------------------
 # Tests de helpers internos
 # ---------------------------------------------------------------------------
+
+class TestGroupService:
+    """Verifica la lógica de clave de agrupación: typos corregidos, infra separado."""
+
+    def _row(self, service: str, service_original: str) -> pd.Series:
+        return pd.Series({"service": service, "service_original": service_original})
+
+    def test_typo_uses_normalized_name(self):
+        """Princes (service_original) → Princess (service) → clave = Princess."""
+        row = self._row("Princess", "Princes")
+        assert _group_service(row) == "Princess"
+
+    def test_known_service_uses_service(self):
+        """Servicio sin typo ni infra → clave = service."""
+        row = self._row("Orchestrator", "Orchestrator")
+        assert _group_service(row) == "Orchestrator"
+
+    def test_infra_uses_service_original(self):
+        """i-* normalizado a infra → clave = service_original (EC2 separados)."""
+        row = self._row("infra", "i-058689de5ec046291")
+        assert _group_service(row) == "i-058689de5ec046291"
+
+    def test_infra_new_parco_uses_service_original(self):
+        row = self._row("infra", "new-parco-instance-1")
+        assert _group_service(row) == "new-parco-instance-1"
+
 
 class TestHelpers:
     def test_priority_max_critical_wins(self):
@@ -189,8 +215,8 @@ class TestDedupeBasic:
         assert len(df) == 2
 
     def test_infra_different_original_is_separate(self):
-        """Dos i-* distintos normalizados a infra: service_original diferente
-        -> incidentes separados (decision de diseño, matches EDA counts)."""
+        """Dos i-* distintos normalizados a infra pero service_original diferente
+        → 2 incidentes. Son entidades distintas de la misma clase."""
         base = datetime(2025, 6, 1, 12, 0, tzinfo=_TZ)
         alerts = [
             _make_alert(
@@ -208,6 +234,28 @@ class TestDedupeBasic:
         ]
         df = dedupe(_df_from_alerts(alerts), _cfg())
         assert len(df) == 2
+
+    def test_typo_corrected_service_merges_in_window(self):
+        """Princes y Princess con la misma condition dentro de ventana
+        → 1 incidente (corrección de identidad, la misma entidad)."""
+        base = datetime(2025, 6, 1, 12, 0, tzinfo=_TZ)
+        alerts = [
+            _make_alert(
+                base,
+                service="Princess",
+                service_original="Princes",       # typo
+                condition="High App Error percentage",
+            ),
+            _make_alert(
+                base + timedelta(minutes=10),
+                service="Princess",
+                service_original="Princess",      # correcto
+                condition="High App Error percentage",
+            ),
+        ]
+        df = dedupe(_df_from_alerts(alerts), _cfg())
+        assert len(df) == 1
+        assert df.iloc[0]["n_alertas"] == 2
 
     def test_paypal_null_incidents(self):
         """incidents_raw=null (PayPal) cuenta como 1 para n_disparos."""

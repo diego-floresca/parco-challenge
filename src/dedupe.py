@@ -7,16 +7,19 @@ Responsabilidades:
   tasa_por_min, priority_max.
 - Asignar incident_id determinista INC-NNNN (orden cronológico de inicio).
 
-Nota de diseño (decisión documentada):
-  La clave interna de agrupación usa service_original para que instancias de
-  infraestructura distintas (i-058..., i-0d2...) generen incidentes separados.
-  Esto produce los números de aceptación del EDA: 277 incidentes / 46 ráfagas /
-  227 alertas en ráfagas. La columna fingerprint almacenada usa el nombre
-  normalizado ({service}::{condition}) para display, per OUTPUTS.md.
+Clave interna de agrupación — decisión documentada:
+  Se usa `service` (con corrección de typos, p.ej. Princes→Princess) para
+  entidades que son la misma escrita mal — corrección de identidad, siempre aplica.
+  EXCEPCIÓN: cuando service == 'infra', se usa service_original para que cada
+  instancia EC2 (i-058..., i-0d2...) genere su propio hilo de incidentes —
+  son entidades distintas de la misma clase, no el mismo servicio mal escrito.
+  Resultado: 277 incidentes / 46 ráfagas / 227 alertas en ráfagas (EDA [ACEPTACIÓN]).
+  La columna fingerprint almacenada usa el nombre normalizado ({service}::{condition})
+  per OUTPUTS.md. Verificado: la alerta de 'Princes' (condition distinta a Princess)
+  no cae en ventana de ninguna 'Princess', por lo que el conteo no cambia.
 """
 from __future__ import annotations
 
-import math
 from datetime import timedelta
 
 import pandas as pd
@@ -34,7 +37,7 @@ def _priority_max(priorities: list[str | None]) -> str | None:
 
 def _n_disparos(incidents_raw_series: pd.Series) -> int:
     """Suma incidents_raw; NaN/None cuentan como 1."""
-    return int(incidents_raw_series.fillna(1).sum())
+    return int(incidents_raw_series.astype(float).fillna(1.0).sum())
 
 
 def _dominant(values: list) -> str:
@@ -44,6 +47,17 @@ def _dominant(values: list) -> str:
         return ""
     from collections import Counter
     return Counter(non_empty).most_common(1)[0][0]
+
+
+def _group_service(row: pd.Series) -> str:
+    """
+    Clave de servicio para la agrupación interna de fingerprint.
+
+    - Con typo corregido (`service`) para entidades mal escritas (Princes→Princess).
+    - Con nombre original (`service_original`) para instancias infra (i-*, new-parco-*)
+      que son entidades distintas de la misma clase.
+    """
+    return row["service_original"] if row["service"] == "infra" else row["service"]
 
 
 def dedupe(df: pd.DataFrame, config: dict) -> pd.DataFrame:
@@ -57,17 +71,18 @@ def dedupe(df: pd.DataFrame, config: dict) -> pd.DataFrame:
 
     Retorna
     -------
-    pd.DataFrame con una fila por incidente, ordenado por score descendente
-    (score se rellena por score.py; aquí se ordena por inicio para que los
-    INC-NNNN sean cronológicos).
+    pd.DataFrame con una fila por incidente, ordenado por inicio cronológico
+    (INC-NNNN) hasta que score.py añada la columna score.
     """
     ventana = timedelta(
         minutes=config["pipeline"]["ventana_rafaga_minutos"]
     )
 
-    # Ordenar por (canal, service_original, condition, dt) — clave de agrupación
-    df_s = df.sort_values(
-        ["channel", "service_original", "condition", "dt"], kind="stable"
+    # Añadir columna temporal de clave de agrupación para ordenar correctamente
+    df_s = df.copy()
+    df_s["_grp_svc"] = df_s.apply(_group_service, axis=1)
+    df_s = df_s.sort_values(
+        ["channel", "_grp_svc", "condition", "dt"], kind="stable"
     ).reset_index(drop=True)
 
     # Barrer linealmente y agrupar
@@ -75,7 +90,7 @@ def dedupe(df: pd.DataFrame, config: dict) -> pd.DataFrame:
     current: dict | None = None
 
     for _, row in df_s.iterrows():
-        group_key = (row["channel"], row["service_original"], row["condition"])
+        group_key = (row["channel"], row["_grp_svc"], row["condition"])
         gap_ok = (
             current is not None
             and group_key == current["_key"]
