@@ -46,7 +46,7 @@ normalizacion:
   typos_service:
     Princes: Princess
   reglas_grupo_infra:
-    - "^i-[0-9a-f]+$"               # IDs de instancias EC2
+    - "^i-[0-9a-f]+$"               # IDs de instancias EC2 maquinas virtuales
     - "^new-parco-instance-\\d+$"
   procesadores_conocidos: [Conekta, Mercadopago, PayPal]   # para extraer de error_message
 

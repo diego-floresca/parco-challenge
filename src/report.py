@@ -429,72 +429,56 @@ def build_digest(
 # ---------------------------------------------------------------------------
 
 def build_panel(
-    df_scored: pd.DataFrame,
-    df_patrones: pd.DataFrame,
-    composicion: dict,
-    metrics: dict,
-    digest: str,
-) -> str:
+    df_scored,
+    df_patrones,
+    composicion,
+    metrics,
+    digest,
+):
     """Genera el panel HTML autocontenido.
 
     Sin recursos externos (no CDN, no Google Fonts, no fetch).
     Los datos se embeben como JSON en etiquetas <script type="application/json">.
-
-    Parámetros
-    ----------
-    df_scored   : DataFrame de score.py.
-    df_patrones : DataFrame de views.vista_patrones().
-    composicion : dict de views.vista_composicion().
-    metrics     : dict de build_metrics().
-    digest      : str producido por build_digest().
-
-    Retorna
-    -------
-    str — contenido completo del panel.html.
     """
-    # Serializar incidentes sre para la vista triage
+    import json as _json
+
     sre_inc = df_scored[df_scored["channel"] == "sre"].copy()
-    sre_records: list[dict] = []
+    sre_records = []
     for _, row in sre_inc.iterrows():
         r = row.to_dict()
-        # Convertir datetime a ISO string
         r["inicio"] = r["inicio"].isoformat() if hasattr(r["inicio"], "isoformat") else str(r["inicio"])
-        r["fin"] = r["fin"].isoformat() if hasattr(r["fin"], "isoformat") else str(r["fin"])
+        r["fin"]    = r["fin"].isoformat()    if hasattr(r["fin"],    "isoformat") else str(r["fin"])
         r["es_recurrente"] = bool(r["es_recurrente"])
         sre_records.append(r)
 
-    # Serializar patrones crónicos (todos los canales, pero se usa para triage)
-    pat_records: list[dict] = []
+    pat_records = []
     for _, row in df_patrones.iterrows():
         r = row.to_dict()
         r["primera"] = r["primera"].isoformat() if hasattr(r["primera"], "isoformat") else str(r["primera"])
-        r["ultima"] = r["ultima"].isoformat() if hasattr(r["ultima"], "isoformat") else str(r["ultima"])
+        r["ultima"]  = r["ultima"].isoformat()  if hasattr(r["ultima"],  "isoformat") else str(r["ultima"])
         r["es_recurrente"] = bool(r["es_recurrente"])
-        r["es_cronico"] = bool(r["es_cronico"])
+        r["es_cronico"]    = bool(r["es_cronico"])
         pat_records.append(r)
 
-    # Serializar datos cx para la vista composición
     cx_data = {
         "por_error_type": {k: int(v) for k, v in composicion["por_error_type"].items()},
         "por_procesador": {k: int(v) for k, v in composicion["por_procesador"].items()},
-        "por_dia": {k: int(v) for k, v in composicion["por_dia"].items()},
-        "kpi_pct": composicion.get("kpi_pct", {}),
-        "total": composicion["total"],
+        "por_dia":        {k: int(v) for k, v in composicion["por_dia"].items()},
+        "kpi_pct":        composicion.get("kpi_pct", {}),
+        "total":          composicion["total"],
     }
 
-    # JSON embebido
-    incidents_json = json.dumps(sre_records, ensure_ascii=False, default=str)
-    patrones_json = json.dumps(pat_records, ensure_ascii=False, default=str)
-    cx_json = json.dumps(cx_data, ensure_ascii=False)
-    metrics_json = json.dumps(metrics, ensure_ascii=False, default=str)
+    incidents_json = _json.dumps(sre_records, ensure_ascii=False, default=str)
+    patrones_json  = _json.dumps(pat_records, ensure_ascii=False, default=str)
+    cx_json        = _json.dumps(cx_data,     ensure_ascii=False)
+    metrics_json   = _json.dumps(metrics,     ensure_ascii=False, default=str)
     digest_escaped = digest.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
-    # Banda meta para el header
-    bandas = metrics.get("bandas", {})
-    n_alertas = metrics.get("input", {}).get("alertas_totales", 0)
+    bandas     = metrics.get("bandas", {})
+    n_alertas  = metrics.get("input", {}).get("alertas_totales", 0)
     n_incidentes = metrics.get("compresion", {}).get("incidentes", 0)
-    red_pct = metrics.get("compresion", {}).get("pct_reduccion", 0)
-    generado = metrics.get("generado", "")
+    red_pct    = metrics.get("compresion", {}).get("pct_reduccion", 0)
+    generado   = metrics.get("generado", "")
 
     html = f"""<!DOCTYPE html>
 <html lang="es">
@@ -600,7 +584,7 @@ def build_panel(
     <label><input type="checkbox" id="filter-solo-cronicos" onchange="renderTriage()"> Solo crónicos</label>
     <button class="export-btn" onclick="exportLabels()">Exportar etiquetas → labels.csv</button>
   </div>
-  <div id="triage-container"></div>
+  <div id="triage-container" style="overflow-x:auto"></div>
 </div>
 
 <!-- TAB: Composición CX -->
@@ -722,7 +706,14 @@ function renderTriage() {{
     }}
   }});
 
-  let html = '<table><thead><tr>' +
+  let html = '<table style="table-layout:fixed">' +
+    '<colgroup>' +
+    '<col style="width:58px"><col style="width:72px"><col style="width:110px">' +
+    '<col style="width:170px"><col>' +
+    '<col style="width:66px"><col style="width:72px"><col style="width:126px">' +
+    '<col style="width:88px"><col style="width:82px">' +
+    '</colgroup>' +
+    '<thead><tr>' +
     '<th>Score</th><th>Banda</th><th>Servicio</th><th>Condición</th>' +
     '<th>Explicación</th><th>Disparos</th><th>Dur (min)</th><th>Inicio</th>' +
     '<th>Atendido</th><th>Etiqueta</th>' +
@@ -761,14 +752,13 @@ function renderIncidentRow(i, isCronico) {{
   const etqVal = ls.etiqueta || '';
   const inicio = i.inicio ? i.inicio.slice(0,16).replace('T',' ') : '';
   const condTrunc = i.condition.length > 45 ? i.condition.slice(0,45) + '…' : i.condition;
-  const expl = i.explicacion.length > 60 ? i.explicacion.slice(0,60) + '…' : i.explicacion;
 
   let row = '<tr onclick="toggleExpand(' + JSON.stringify(i.incident_id) + ')" style="cursor:pointer">' +
     '<td>' + fmtScore(i.score, i.banda) + '</td>' +
     '<td><span class="pill pill-' + i.banda + '">' + i.banda + '</span></td>' +
     '<td>' + escHtml(i.service) + '</td>' +
     '<td title="' + escHtml(i.condition) + '">' + escHtml(condTrunc) + '</td>' +
-    '<td title="' + escHtml(i.explicacion) + '">' + escHtml(expl) + '</td>' +
+    '<td title="' + escHtml(i.explicacion) + '" style="white-space:normal;word-break:break-word">' + escHtml(i.explicacion) + '</td>' +
     '<td>' + i.n_disparos + '</td>' +
     '<td>' + (i.duracion_min || 0).toFixed(1) + '</td>' +
     '<td>' + escHtml(inicio) + '</td>' +
