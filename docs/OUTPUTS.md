@@ -68,33 +68,68 @@ Reglas de la columna `explicacion` (plantillas por condición dominante, en este
 Los valores numéricos se calculan, no se copian: si difieren de los esperados,
 los tests de aceptación lo gritan.
 
+## 2.5. vista_patrones (insumo para digest y panel, no archivo independiente)
+
+Producida por `views.vista_patrones(df_scored, config)`. Una fila por (channel, fingerprint).
+
+| Columna | Tipo | Descripción |
+|---|---|---|
+| channel | str | canal |
+| fingerprint | str | `{service}::{condition}` |
+| service | str | servicio normalizado |
+| n_incidentes | int | episodios en el período |
+| score_medio | float | media de score de todos los episodios |
+| score_max | int | score más alto del período |
+| n_disparos_total | int | suma de n_disparos de todos los episodios |
+| es_recurrente | bool | dias_visto >= recurrente_min_dias en su perfil |
+| es_cronico | bool | es_recurrente AND n_incidentes >= cronico_min_incidentes (config) |
+| primera | datetime | inicio del primer incidente del período |
+| ultima | datetime | fin del último incidente del período |
+
+**Crónico activo**: fingerprint con `es_recurrente=True` y `n_incidentes >= pipeline.cronico_min_incidentes` (default 5).
+Son 19 de 43 fingerprints en el dataset real. Ejemplo canónico: `Orchestrator::high request count with status 500` — 45 episodios, score medio 43.9.
+La distinción es de gestión: el crónico se gestiona como caso abierto (un ticket de ingeniería), no como alerta individual.
+Esta vista es **insumo para digest.md y panel.html**; incidents.csv no cambia (sigue siendo una fila por incidente).
+
 ## 3. output/digest.md — los 2 minutos del lunes
 Estructura fija (el LLM rellena la narrativa, NUNCA los números):
 ```
 # Digest de alertas — {fecha de corrida}
 Período procesado: {rangos} · {n} alertas -> {m} incidentes
 
-## Merece tu atención ({k} incidentes P1/P2)
+## Merece tu atención ({k} incidentes P1)
 - **{service} · {condition}** (score {s}, {banda_etiqueta}): {explicacion}. {narrativa_llm}
-  ... (máximo 5; si hay más P1/P2, los siguientes se listan en una línea)
+  ... (máximo 5; si hay más P1, los siguientes se listan en una línea)
+
+## Crónicos activos — gestionar como caso, no como alerta ({c} patrones)
+- **{service} · {condition}**: {n_incidentes} episodios en el período, score medio {score_medio} — {narrativa_llm}
+  Ejemplo: "Orchestrator · 500s: 45 episodios, score medio 44 — problema estructural, abrir ticket de ingeniería"
+  ... (todos los crónicos, ordenados por n_incidentes desc; máximo 8 en el digest; si hay más, nota al pie)
 
 ## Pagos (canal CX)
 {composición del período: % por error_type, procesador dominante, día pico} — el % de
 fondos insuficientes del período fue {x}%.
 
 ## El resto, en una frase
-{n_p3} incidentes informativos: {resumen de patrones habituales, ej. "el job nocturno
+{n_p3 + P2 no-crónicos} incidentes informativos: {resumen de patrones habituales, ej. "el job nocturno
 de data-team, el ritmo de fin de semana"}.
 ```
 Prompt a Gemini 2.5 Flash (report.py):
 - system: "Eres el narrador de un digest operativo. Recibes una tabla JSON de incidentes
   ya calculados. Redacta SOLO la narrativa de los campos {narrativa_llm}: contexto y
-  consecuencia probable en <=25 palabras por incidente, español neutro, sin inventar
+  consecuencia probable en <=25 palabras por incidente/crónico, español neutro, sin inventar
   números ni servicios que no estén en la tabla. Si no hay nada que agregar, devuelve
   cadena vacía."
-- user: la tabla de incidentes P1/P2 en JSON + el bloque de composición cx.
+- user: la tabla de incidentes P1 en JSON + la tabla de crónicos + el bloque de composición cx.
 - Manejo: timeout 30s, 1 reintento; si falla o --no-llm: los campos {narrativa_llm}
   quedan vacíos y el digest sigue siendo válido (degradación elegante).
+
+**Nota de reconciliación de calibración (2026-06-12):**
+El diagnóstico con 277 incidentes reales reveló que el bloque P2 masivo (175/277) es un
+hallazgo real, no un bug: 55 de esos P2 son Orchestrator crónico (problema estructural conocido).
+Los umbrales P1≥70/P2≥40 se validaron contra valles naturales del histograma (anti-pico en 40-41,
+salto en 70). El score y los umbrales no se tocaron; se añadió la sección "Crónicos activos" para
+dar a estos incidentes una vía de gestión diferenciada sin inflar artificialmente P1.
 
 ## 4. output/panel.html — autocontenido, abre con doble clic
 - Vanilla JS + CSS embebido, datos embebidos como JSON inline (sin fetch, sin backend,

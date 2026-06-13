@@ -6,7 +6,10 @@ Cubre:
     INSUFFICIENT_FUNDS=28, IMPOSSIBLE_TO_CHARGE=25, CARD_DECLINED=23,
     BANK_REJECTED=12 (EDA §7 [ACEPTACIÓN]).
 - KPI % de INSUFFICIENT_FUNDS.
-- Determinismo de ambas vistas.
+- vista_patrones: agrupación por fingerprint, crónicos activos.
+    Crónico activo = es_recurrente=True AND n_incidentes >= 5.
+    Caso canónico: Orchestrator::high request count con 45 episodios.
+- Determinismo de las tres vistas.
 - Fixtures sintéticas para aislamiento.
 """
 from __future__ import annotations
@@ -23,7 +26,7 @@ from src.normalize import normalize
 from src.dedupe import dedupe
 from src.profiles import build_profiles
 from src.score import score
-from src.views import vista_triage, vista_composicion
+from src.views import vista_triage, vista_composicion, vista_patrones
 
 RAW_JSON = Path(__file__).parents[1] / "data" / "raw" / "alerts_combined.json"
 CONFIG_PATH = Path(__file__).parents[1] / "config.yaml"
@@ -70,6 +73,11 @@ def triage(df_scored):
 @pytest.fixture(scope="session")
 def composicion(df_norm):
     return vista_composicion(df_norm)
+
+
+@pytest.fixture(scope="session")
+def patrones(df_scored, config):
+    return vista_patrones(df_scored, config)
 
 
 # ---------------------------------------------------------------------------
@@ -261,3 +269,191 @@ class TestVistaComposicion_Sintetico:
         df = self._cx_df([self._row()] * 5)
         result = vista_composicion(df)
         assert result["total"] == 5
+
+
+# ---------------------------------------------------------------------------
+# Tests de vista_patrones con datos reales
+# ---------------------------------------------------------------------------
+
+class TestVistaPatrones:
+
+    def test_columnas_obligatorias(self, patrones):
+        for col in [
+            "channel", "fingerprint", "service", "n_incidentes",
+            "score_medio", "score_max", "n_disparos_total",
+            "es_recurrente", "es_cronico", "primera", "ultima",
+        ]:
+            assert col in patrones.columns, f"Columna faltante: {col}"
+
+    def test_total_fingerprints(self, patrones):
+        """43 fingerprints distintos sobre 277 incidentes."""
+        assert len(patrones) == 43
+
+    def test_suma_n_incidentes_es_277(self, patrones):
+        """Todos los incidentes están asignados a exactamente un patrón."""
+        assert patrones["n_incidentes"].sum() == 277
+
+    def test_cronicos_activos_son_19(self, patrones):
+        """19 fingerprints cumplen es_recurrente=True AND n_incidentes >= 5."""
+        assert patrones["es_cronico"].sum() == 19
+
+    def test_orden_cronicos_primero(self, patrones):
+        """Primeras filas son crónicos; las no-crónicas van al final."""
+        es_cronico = patrones["es_cronico"].tolist()
+        # Todos los True deben preceder a cualquier False
+        ultimo_true = max((i for i, v in enumerate(es_cronico) if v), default=-1)
+        primer_false = next((i for i, v in enumerate(es_cronico) if not v), len(es_cronico))
+        assert ultimo_true < primer_false, "Crónicos no están al inicio del DataFrame"
+
+    def test_orchestrator_500_es_cronico(self, patrones):
+        """Orchestrator::high request count con 45 episodios debe ser crónico."""
+        row = patrones[
+            patrones["fingerprint"] == "Orchestrator::high request count with status 500"
+        ]
+        assert not row.empty
+        assert row.iloc[0]["n_incidentes"] == 45
+        assert row.iloc[0]["es_cronico"]
+        assert abs(row.iloc[0]["score_medio"] - 43.9) <= 1.0
+
+    def test_tesseract_high_error_no_cronico(self, patrones):
+        """tesseract High App Error % tiene 7 incidentes pero es_recurrente=False -> no crónico."""
+        row = patrones[
+            patrones["fingerprint"] == "tesseract::High Application Error percentage"
+        ]
+        assert not row.empty
+        assert not row.iloc[0]["es_recurrente"]
+        assert not row.iloc[0]["es_cronico"]
+
+    def test_n_disparos_total_positivo(self, patrones):
+        assert (patrones["n_disparos_total"] >= 1).all()
+
+    def test_primera_antes_de_ultima(self, patrones):
+        """primera <= ultima para todos los patrones."""
+        assert (patrones["primera"] <= patrones["ultima"]).all()
+
+    def test_cronicos_incluyen_cx(self, patrones):
+        """Hairs::Payments rejected hairs CX es crónico activo (cx también tiene crónicos)."""
+        row = patrones[
+            (patrones["fingerprint"] == "Hairs::Payments rejected hairs CX")
+            & (patrones["channel"] == "monitoring-ops-cx")
+        ]
+        assert not row.empty
+        assert row.iloc[0]["es_cronico"]
+
+    def test_determinismo(self, df_scored, config):
+        p1 = vista_patrones(df_scored, config)
+        p2 = vista_patrones(df_scored, config)
+        assert p1["fingerprint"].tolist() == p2["fingerprint"].tolist()
+        assert p1["n_incidentes"].tolist() == p2["n_incidentes"].tolist()
+
+    def test_score_max_gte_score_medio(self, patrones):
+        assert (patrones["score_max"] >= patrones["score_medio"]).all()
+
+
+# ---------------------------------------------------------------------------
+# Tests sintéticos de vista_patrones
+# ---------------------------------------------------------------------------
+
+class TestVistaPatrones_Sintetico:
+
+    def _make_df(self, rows: list[dict]) -> pd.DataFrame:
+        """Crea un DataFrame mínimo de incidentes scoreados."""
+        return pd.DataFrame(rows)
+
+    def _inc(
+        self,
+        fingerprint="Foo::bar",
+        channel="sre",
+        service="Foo",
+        score_val=50,
+        n_disparos=1,
+        n_alertas=1,
+        es_recurrente=False,
+        inicio=None,
+        fin=None,
+    ) -> dict:
+        t = inicio or datetime(2025, 6, 2, 14, 0, tzinfo=_TZ)
+        return {
+            "incident_id": "INC-0001",
+            "channel": channel,
+            "fingerprint": fingerprint,
+            "service": service,
+            "score": score_val,
+            "n_disparos": n_disparos,
+            "n_alertas": n_alertas,
+            "es_recurrente": es_recurrente,
+            "inicio": t,
+            "fin": fin or t,
+        }
+
+    def test_un_fingerprint(self, config):
+        df = self._make_df([self._inc(score_val=60, n_disparos=3)])
+        p = vista_patrones(df, config)
+        assert len(p) == 1
+        assert p.iloc[0]["n_incidentes"] == 1
+        assert p.iloc[0]["score_medio"] == 60.0
+        assert p.iloc[0]["n_disparos_total"] == 3
+
+    def test_dos_fingerprints_distintos(self, config):
+        df = self._make_df([
+            self._inc("A::cond1", score_val=70),
+            self._inc("B::cond2", score_val=40),
+        ])
+        p = vista_patrones(df, config)
+        assert len(p) == 2
+        assert p["n_incidentes"].sum() == 2
+
+    def test_score_medio_correcto(self, config):
+        """Dos incidentes del mismo fingerprint con scores 40 y 60 -> medio=50."""
+        df = self._make_df([
+            self._inc("X::y", score_val=40),
+            self._inc("X::y", score_val=60),
+        ])
+        p = vista_patrones(df, config)
+        assert len(p) == 1
+        assert p.iloc[0]["score_medio"] == 50.0
+
+    def test_es_cronico_false_poco_incidentes(self, config):
+        """4 incidentes recurrentes: menos que cronico_min_incidentes=5 -> no crónico."""
+        rows = [self._inc("X::y", es_recurrente=True) for _ in range(4)]
+        df = self._make_df(rows)
+        p = vista_patrones(df, config)
+        assert not bool(p.iloc[0]["es_cronico"])
+
+    def test_es_cronico_true(self, config):
+        """5 incidentes recurrentes = exactamente el umbral -> crónico."""
+        rows = [self._inc("X::y", es_recurrente=True) for _ in range(5)]
+        df = self._make_df(rows)
+        p = vista_patrones(df, config)
+        assert bool(p.iloc[0]["es_cronico"])
+
+    def test_es_cronico_false_no_recurrente(self, config):
+        """10 incidentes pero es_recurrente=False -> no crónico (es nuevo ruidoso)."""
+        rows = [self._inc("X::y", es_recurrente=False) for _ in range(10)]
+        df = self._make_df(rows)
+        p = vista_patrones(df, config)
+        assert not bool(p.iloc[0]["es_cronico"])
+
+    def test_primera_ultima(self, config):
+        t1 = datetime(2025, 6, 2, 10, 0, tzinfo=_TZ)
+        t2 = datetime(2025, 6, 5, 18, 0, tzinfo=_TZ)
+        df = self._make_df([
+            self._inc("X::y", inicio=t1, fin=t1),
+            self._inc("X::y", inicio=t2, fin=t2),
+        ])
+        p = vista_patrones(df, config)
+        assert p.iloc[0]["primera"] == t1
+        assert p.iloc[0]["ultima"] == t2
+
+    def test_cronicos_primero_en_orden(self, config):
+        """Crónicos ordenados antes que no-crónicos."""
+        rows = (
+            [self._inc("A::cond", score_val=40, es_recurrente=False)] +
+            [self._inc("B::cond", score_val=50, es_recurrente=True) for _ in range(6)]
+        )
+        df = self._make_df(rows)
+        p = vista_patrones(df, config)
+        assert p.iloc[0]["fingerprint"] == "B::cond"
+        assert bool(p.iloc[0]["es_cronico"])
+        assert p.iloc[-1]["fingerprint"] == "A::cond"
+        assert not bool(p.iloc[-1]["es_cronico"])
