@@ -338,24 +338,39 @@ def build_digest(
     if n_p1 == 0:
         lines.append("_Sin incidentes P1 en el período._")
     else:
-        for i, (_, row) in enumerate(p1_df.iterrows()):
+        # Agrupar por fingerprint: si el mismo problema aparece N veces,
+        # mostrar una sola línea con "N episodios" en lugar de N entradas repetidas.
+        seen_fps: list[str] = []
+        fp_groups: dict[str, list] = {}
+        for _, row in p1_df.iterrows():
+            fp = row["fingerprint"]
+            if fp not in fp_groups:
+                seen_fps.append(fp)
+                fp_groups[fp] = []
+            fp_groups[fp].append(row)
+
+        for i, fp in enumerate(seen_fps):
+            group = fp_groups[fp]
+            row = group[0]  # representante: el de score más alto (df ya viene ordenado)
+            n_ep = len(group)
+            ep_suffix = f" · {n_ep} episodios" if n_ep > 1 else ""
             narrativa = narrativas_p1.get(row["incident_id"], "")
             suffix = f" {narrativa}" if narrativa else ""
             if i < 5:
                 lines.append(
-                    f"- **{row['service']} · {row['condition']}** "
-                    f"(score {row['score']}, {row['banda_etiqueta']}): "
+                    f"- **{row['service']} · {row['condition']}**"
+                    f" (score {row['score']}, {row['banda_etiqueta']}{ep_suffix}): "
                     f"{row['explicacion']}.{suffix}"
                 )
             else:
-                # Los P1 extras en una línea
                 if i == 5:
                     lines.append("")
                     lines.append(
                         "_Otros P1:_ "
                         + ", ".join(
-                            f"{r['service']} [{r['score']}]"
-                            for _, r in p1_df.iloc[5:].iterrows()
+                            f"{fp_groups[f][0]['service']} [{fp_groups[f][0]['score']}]"
+                            + (f" ×{len(fp_groups[f])}" if len(fp_groups[f]) > 1 else "")
+                            for f in seen_fps[5:]
                         )
                     )
                     break

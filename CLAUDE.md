@@ -2,8 +2,8 @@
 
 ## LECTURA OBLIGATORIA antes de escribir código
 Este archivo es la constitución operativa. La memoria profunda del proyecto vive en:
-- `docs/EDA.md` — TODOS los hallazgos del análisis exploratorio con evidencia y números
-- `docs/OUTPUTS.md` — contratos EXACTOS de incidents.csv, metrics.json, digest.md y panel.html
+- `docs/eda.md` — TODOS los hallazgos del análisis exploratorio con evidencia y números
+- `docs/outputs.md` — contratos EXACTOS de incidents.csv, metrics.json, digest.md y panel.html
 Léelos antes de implementar la capa correspondiente. Si una decisión de implementación
 contradice algo escrito en estos documentos, detente y pregunta — no improvises.
 
@@ -43,7 +43,7 @@ pipeline.py --input data/raw/alerts_combined.json [--no-llm]
 Todo parámetro de negocio vive en `config.yaml` (pesos, criticidades, ventanas, mapas de
 normalización). El código NO hardcodea criticidades ni pesos.
 
-## Reglas de datos NO NEGOCIABLES (provienen del EDA; evidencia en docs/EDA.md)
+## Reglas de datos NO NEGOCIABLES (provienen del EDA; evidencia en docs/eda.md)
 1. **Reloj confiable por canal**: en `sre` usar `ts` (epoch); en `monitoring-ops-cx` usar
    `timestamp` (ISO). NUNCA usar un solo campo de tiempo globalmente.
 2. **Fingerprint** = (service_normalizado, condition). Los mensajes son 23 plantillas exactas:
@@ -78,9 +78,9 @@ Bandas: P1 >= 70 ("Atiende ahora"), P2 40-69 ("Revisa hoy"), P3 < 40 ("Informati
 requiere acción"). Ficha de recurrencia por fingerprint = {dias_visto, horas_tipicas,
 sello_finde, rafaga_tipica} calculada del propio histórico, POR CANAL (los períodos de
 sre y cx son disjuntos: nunca mezclar sus fichas). NO usar z-scores: n=458 no lo sostiene
-(decisión documentada). Casos canónicos esperados en docs/EDA.md sección 9.
+(decisión documentada). Casos canónicos esperados en docs/eda.md sección 9.
 
-## Números de aceptación (los tests de integración los afirman; detalle en docs/EDA.md)
+## Números de aceptación (los tests de integración los afirman; detalle en docs/eda.md)
 - 458 registros totales; 3 esquemas de llaves (360 / 95 / 3 registros)
 - 23 conditions únicas; 28 services crudos; 5 policies; 2 channels (sre=363, cx=95)
 - cx: 95 registros, 100% con error_type; composición: INSUFFICIENT_FUNDS=28,
@@ -115,7 +115,7 @@ sre y cx son disjuntos: nunca mezclar sus fichas). NO usar z-scores: n=458 no lo
   baseline pre-despliegue, cadencia 30/60/90, kill criteria (~70% P1 atendidos),
   evolución (recalibración con etiquetas = ahí sí aplica train/test)
 - glosario.md: el diccionario con analogías para gente no técnica
-- EDA.md y OUTPUTS.md: memoria profunda (este archivo apunta a ellos)
+- eda.md y outputs.md: memoria profunda (este archivo apunta a ellos)
 
 # Convenciones
 - la carpeta analysis/ y sus archivo son de exploración, el pipeline NUNCA importa nada de ahí 

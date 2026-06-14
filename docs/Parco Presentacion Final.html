@@ -1,0 +1,1870 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parco — Pipeline de inteligencia de alertas · Diego Flores</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/iconfont/tabler-icons.min.css">
+<style>
+/* ── VARIABLES ── */
+:root {
+  --bg:          #0B1726;
+  --bg2:         #0F2138;
+  --bg3:         #0D1C30;
+  --card:        #122A45;
+  --card2:       #0F2340;
+  --border:      #1E3A5C;
+  --border2:     #243F60;
+  --tp:          #F4F7FA;
+  --ts:          #9FB3C8;
+  --tt:          #6B8099;
+  --cyan:        #4FD1D9;
+  --cyan2:       #38B2BA;
+  --coral:       #FF8A5C;
+  --purple:      #A29BFE;
+  --pink:        #ED93B1;
+  --amber:       #EF9F27;
+  --green:       #5DCAA5;
+  --red:         #E24B4A;
+  --cyan-dim:    rgba(79,209,217,0.12);
+  --coral-dim:   rgba(255,138,92,0.12);
+  --purple-dim:  rgba(162,155,254,0.14);
+  --pink-dim:    rgba(237,147,177,0.12);
+  --amber-dim:   rgba(239,159,39,0.14);
+  --green-dim:   rgba(29,158,117,0.14);
+  --red-dim:     rgba(226,75,74,0.14);
+  --green-t:     #7FE0BE;
+  --green-d:     #085041;
+  --red-t:       #F2A7A0;
+  --red-d:       #791F1F;
+  --amber-t:     #F4C277;
+  --amber-d:     #633806;
+  --purple-t:    #C5C1FB;
+  --purple-d:    #3C3489;
+  --r:           14px;
+  --r-sm:        8px;
+  --r-lg:        18px;
+}
+
+/* ── RESET & BASE ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--tp);
+  line-height: 1.55;
+  overflow-x: hidden;
+}
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: rgba(79,209,217,0.10);
+  color: var(--cyan);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.82em;
+}
+
+/* ── SECTIONS ── */
+section {
+  min-height: 100vh;
+  padding: 60px 80px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: radial-gradient(ellipse at 20% 20%, var(--bg2) 0%, var(--bg) 60%);
+  border-bottom: 1px solid var(--border);
+}
+section::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 80% 80%, rgba(79,209,217,0.03) 0%, transparent 60%);
+  pointer-events: none;
+}
+.section-inner { max-width: 1100px; width: 100%; margin: 0 auto; }
+
+/* ── HEADER DE SECCIÓN ── */
+.sec-header { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
+.sec-icon {
+  width: 50px; height: 50px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.sec-eyebrow {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.sec-title {
+  font-size: 2rem; font-weight: 700; line-height: 1.15;
+  color: var(--tp);
+}
+.sec-subtitle {
+  font-size: 13px; color: var(--tt); font-style: italic;
+}
+.accent-line {
+  width: 72px; height: 4px; border-radius: 2px; margin: 12px 0 24px;
+  background: linear-gradient(90deg, var(--cyan), var(--coral));
+}
+
+/* ── CARDS ── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 1.2rem 1.4rem;
+}
+.card.dashed { border-style: dashed; background: rgba(18,42,69,0.4); }
+.card .label { font-size: 0.8rem; color: var(--ts); margin-bottom: 0.35rem; font-weight: 500; }
+.card .value { font-size: 1.8rem; font-weight: 700; color: var(--tp); }
+.card .sub   { font-size: 0.75rem; color: var(--tt); margin-top: 0.3rem; }
+
+.card-lead {
+  background: var(--card);
+  border: 0.5px solid var(--border);
+  border-radius: var(--r);
+  padding: 1.1rem 1.4rem;
+  margin-bottom: 24px;
+  font-size: 0.95rem;
+  line-height: 1.75;
+  color: var(--tp);
+}
+
+/* ── GRID ── */
+.grid { display: grid; gap: 12px; }
+.g2 { grid-template-columns: repeat(2,1fr); }
+.g3 { grid-template-columns: repeat(3,1fr); }
+.g4 { grid-template-columns: repeat(4,1fr); }
+
+/* ── PILLS ── */
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid rgba(79,209,217,0.35); color: var(--cyan);
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em;
+  padding: 4px 12px; border-radius: 999px; text-transform: uppercase;
+}
+.pill-sim { color: var(--purple); border-color: rgba(162,155,254,0.4); }
+.pill-sim::before { content: "◆"; font-size: 8px; }
+
+/* ── TINTS ── */
+.tint-cyan   { background: var(--cyan-dim);   border-color: rgba(79,209,217,0.3); }
+.tint-coral  { background: var(--coral-dim);  border-color: rgba(255,138,92,0.3); }
+.tint-red    { background: var(--red-dim);    border-color: rgba(226,75,74,0.25); }
+.tint-amber  { background: var(--amber-dim);  border-color: rgba(239,159,39,0.3); }
+.tint-green  { background: var(--green-dim);  border-color: rgba(29,158,117,0.3); }
+.tint-purple { background: var(--purple-dim); border-color: rgba(162,155,254,0.3); }
+
+/* ── ICON BOX ── */
+.ibox {
+  width: 40px; height: 40px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; font-size: 18px; margin-bottom: 8px;
+}
+
+/* ── TAGS ── */
+.tag {
+  display: inline-block;
+  font-size: 10px; font-weight: 600;
+  padding: 2px 8px; border-radius: 5px;
+  margin: 2px;
+}
+
+/* ── FOOTNOTE ── */
+.footnote { font-size: 0.75rem; color: var(--tt); margin-top: 1rem; }
+
+/* ── ANIMACIONES ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes pulse-cyan {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(79,209,217,0.25); }
+  50%       { box-shadow: 0 0 0 8px rgba(79,209,217,0); }
+}
+@keyframes slideRight {
+  from { width: 0; }
+  to   { width: 100%; }
+}
+
+.animate-up   { animation: fadeUp 0.6s ease both; }
+.animate-in   { animation: fadeIn 0.5s ease both; }
+.delay-1 { animation-delay: 0.1s; }
+.delay-2 { animation-delay: 0.2s; }
+.delay-3 { animation-delay: 0.3s; }
+.delay-4 { animation-delay: 0.4s; }
+.delay-5 { animation-delay: 0.5s; }
+
+/* IntersectionObserver trigger */
+.reveal { opacity: 0; transform: translateY(28px); transition: opacity 0.7s ease, transform 0.7s ease; }
+.reveal.visible { opacity: 1; transform: none; }
+.reveal.delay-1 { transition-delay: 0.1s; }
+.reveal.delay-2 { transition-delay: 0.2s; }
+.reveal.delay-3 { transition-delay: 0.3s; }
+.reveal.delay-4 { transition-delay: 0.4s; }
+
+/* ── NAV DOTS ── */
+#nav-dots {
+  position: fixed; right: 24px; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 10px; z-index: 100;
+}
+.nav-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--border2); cursor: pointer;
+  transition: all 0.3s ease; border: none;
+  display: block;
+}
+.nav-dot.active { background: var(--cyan); animation: pulse-cyan 2s infinite; }
+.nav-dot:hover  { background: var(--ts); transform: scale(1.3); }
+
+/* ── PROGRESS BAR ── */
+#progress-bar {
+  position: fixed; top: 0; left: 0; height: 3px;
+  background: linear-gradient(90deg, var(--cyan), var(--coral));
+  z-index: 200; transition: width 0.1s ease;
+  width: 0%;
+}
+
+/* ── HOVER EFFECTS ── */
+.card-hover {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  cursor: default;
+}
+.card-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+/* ── RANGE INPUTS ── */
+input[type=range] {
+  -webkit-appearance: none;
+  width: 100%; height: 4px;
+  border-radius: 2px;
+  background: var(--border2);
+  outline: none;
+  cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--cyan); cursor: pointer;
+  box-shadow: 0 0 6px rgba(79,209,217,0.5);
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ts); }
+</style>
+</head>
+<body>
+
+<!-- PROGRESS BAR -->
+<div id="progress-bar"></div>
+
+<!-- NAV DOTS -->
+<nav id="nav-dots" aria-label="Navegación de secciones">
+  <button class="nav-dot active" data-section="0" title="Contenido"></button>
+  <button class="nav-dot" data-section="1" title="Problema"></button>
+  <button class="nav-dot" data-section="2" title="Panel"></button>
+  <button class="nav-dot" data-section="3" title="Diccionario y EDA"></button>
+  <button class="nav-dot" data-section="4" title="Score"></button>
+  <button class="nav-dot" data-section="5" title="Pipeline"></button>
+  <button class="nav-dot" data-section="6" title="Métricas"></button>
+  <button class="nav-dot" data-section="7" title="Gestión"></button>
+  <button class="nav-dot" data-section="8" title="Evolución"></button>
+  <button class="nav-dot" data-section="9" title="Cierre"></button>
+</nav>
+
+<!-- ══════════════════════════════════════════════════
+     PÁGINA 1 — CONTENIDO (ruta de metro)
+══════════════════════════════════════════════════ -->
+<section id="s0">
+<div class="section-inner">
+  <div class="reveal animate-up">
+    <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;color:var(--cyan);text-transform:uppercase;margin-bottom:8px">Diego Flores · AI Engineer · Technical Assessment</div>
+    <h1 style="font-size:3rem;font-weight:700;line-height:1.1;margin-bottom:4px">Contenido</h1>
+    <div class="accent-line"></div>
+  </div>
+
+  <div class="reveal delay-2" style="display:flex;gap:60px;align-items:flex-start;margin-top:8px">
+    <!-- LÍNEA DE METRO -->
+    <div style="position:relative;padding:10px 0;flex-shrink:0">
+      <!-- línea vertical -->
+      <div style="position:absolute;left:36px;top:52px;bottom:52px;width:3px;background:linear-gradient(to bottom,var(--cyan),var(--coral));border-radius:2px;opacity:0.4"></div>
+
+      <div style="display:flex;flex-direction:column;gap:28px">
+        <!-- nodo -->
+        <div style="display:flex;align-items:center;gap:20px">
+          <div style="width:72px;height:72px;border-radius:50%;background:var(--red-dim);border:2px solid var(--red);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0;animation:pulse-cyan 3s infinite;z-index:1">
+            <span style="font-size:20px">💬</span>
+          </div>
+          <div>
+            <div style="font-size:16px;font-weight:700;color:var(--tp)">Problema</div>
+            <div style="font-size:11px;color:var(--tt)">Alertas sin orden ni dueño</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px">
+          <div style="width:72px;height:72px;border-radius:50%;background:var(--green-dim);border:2px solid var(--green);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0;z-index:1">
+            <span style="font-size:20px">🖥️</span>
+          </div>
+          <div>
+            <div style="font-size:16px;font-weight:700;color:var(--tp)">Panel</div>
+            <div style="font-size:11px;color:var(--tt)">Lo que Ops abre el lunes</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px">
+          <div style="width:72px;height:72px;border-radius:50%;background:var(--purple-dim);border:2px solid var(--purple);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0;z-index:1">
+            <span style="font-size:20px">📖</span>
+          </div>
+          <div>
+            <div style="font-size:16px;font-weight:700;color:var(--tp)">Diccionario y EDA</div>
+            <div style="font-size:11px;color:var(--tt)">La jerarquía oculta del dato</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px">
+          <div style="width:72px;height:72px;border-radius:50%;background:var(--amber-dim);border:2px solid var(--amber);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0;z-index:1">
+            <span style="font-size:20px">🧮</span>
+          </div>
+          <div>
+            <div style="font-size:16px;font-weight:700;color:var(--tp)">Score</div>
+            <div style="font-size:11px;color:var(--tt)">Del crédito a la prioridad</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px">
+          <div style="width:72px;height:72px;border-radius:50%;background:var(--cyan-dim);border:2px solid var(--cyan);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0;z-index:1">
+            <span style="font-size:20px">🔧</span>
+          </div>
+          <div>
+            <div style="font-size:16px;font-weight:700;color:var(--tp)">Pipeline</div>
+            <div style="font-size:11px;color:var(--tt)">7 capas, una fuente de verdad</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px">
+          <div style="width:72px;height:72px;border-radius:50%;background:var(--amber-dim);border:2px solid var(--amber);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0;z-index:1">
+            <span style="font-size:20px">⚖️</span>
+          </div>
+          <div>
+            <div style="font-size:16px;font-weight:700;color:var(--tp)">Métricas</div>
+            <div style="font-size:11px;color:var(--tt)">Lo medible y lo simulado</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px">
+          <div style="width:72px;height:72px;border-radius:50%;background:var(--pink-dim);border:2px solid var(--pink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0;z-index:1">
+            <span style="font-size:20px">👥</span>
+          </div>
+          <div>
+            <div style="font-size:16px;font-weight:700;color:var(--tp)">Gestión</div>
+            <div style="font-size:11px;color:var(--tt)">Ownership y kill criteria</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px">
+          <div style="width:72px;height:72px;border-radius:50%;background:var(--purple-dim);border:2px solid var(--purple);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0;z-index:1">
+            <span style="font-size:20px">🧬</span>
+          </div>
+          <div>
+            <div style="font-size:16px;font-weight:700;color:var(--tp)">Evolución</div>
+            <div style="font-size:11px;color:var(--tt)">Cómo crece sin romperse</div>
+          </div>
+        </div>
+        <!-- NODO FINAL CON LOGO PARCO -->
+        <div style="display:flex;align-items:center;gap:20px">
+          <div style="width:80px;height:80px;border-radius:50%;background:var(--card);border:2px solid var(--cyan);display:flex;align-items:center;justify-content:center;flex-shrink:0;z-index:1;box-shadow:0 0 20px rgba(79,209,217,0.3)">
+            <svg width="44" height="44" viewBox="0 0 100 100">
+              <path d="M50 5 C75 5 95 25 95 50 C95 75 75 95 50 95 L5 95 L5 50 C5 25 25 5 50 5 Z" fill="#4FD1D9"/>
+              <path d="M50 28 C62 28 72 38 72 50 C72 62 62 72 50 72 L40 72 L40 86 L28 86 L28 28 Z M40 40 L40 60 L50 60 C56 60 60 56 60 50 C60 44 56 40 50 40 Z" fill="white"/>
+            </svg>
+          </div>
+          <div>
+            <div style="font-size:16px;font-weight:700;color:var(--cyan)">Cierre</div>
+            <div style="font-size:11px;color:var(--tt)">#parquiano</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TEXTO LATERAL -->
+    <div style="padding-top:10px;max-width:420px">
+      <p style="font-size:1.1rem;color:var(--ts);line-height:1.8;margin-bottom:24px">Un pipeline de inteligencia de alertas que convierte 458 mensajes de Slack en un digest que Ops lee en 2 minutos — construido en una semana con criterio, analogía y orquestación de agentes.</p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <span class="pill">Python · pandas</span>
+        <span class="pill">Gemini 2.5 Flash</span>
+        <span class="pill">277 incidentes</span>
+        <span class="pill">245 tests verdes</span>
+        <span class="pill">4 artefactos en 1 comando</span>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ══════════════════════════════════════════════════
+     PÁGINA 2 — PROBLEMA
+══════════════════════════════════════════════════ -->
+<section id="s1">
+<div class="section-inner">
+  <div class="reveal">
+    <div class="sec-header">
+      <div class="sec-icon" style="background:var(--red-dim)">
+        <span style="font-size:22px;color:var(--red)">!</span>
+      </div>
+      <div>
+        <div class="sec-eyebrow" style="color:var(--red)">01</div>
+        <h2 class="sec-title">Problema</h2>
+      </div>
+    </div>
+    <div class="accent-line"></div>
+  </div>
+
+  <div class="card-lead reveal delay-1" style="border-left:3px solid var(--red)">
+    Las alertas llegan, pero la atención no. Cientos de mensajes técnicos saturan un canal de Slack sin orden, sin prioridad y sin dueño — y cuando algo realmente grave ocurre, se pierde entre el ruido de lo que ya era normal. La empresa no necesita más datos: necesita que los datos que ya tiene digan, en segundos, qué importa hoy.
+  </div>
+
+  <!-- COMENTARIOS GOOGLE MAPS -->
+  <div class="grid g3 reveal delay-2" style="margin-bottom:16px">
+    <div class="card card-hover">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div style="width:36px;height:36px;border-radius:50%;background:#E1F5EE;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--green-d);flex-shrink:0">T</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--tp)">Tech</div>
+          <div style="color:#EF9F27;font-size:12px">★★<span style="color:var(--border2)">★★★</span></div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--ts);line-height:1.6;font-style:italic">"Demasiados sistemas alertando sin un criterio común de severidad. Todo llega como urgent."</p>
+    </div>
+    <div class="card card-hover">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--amber-dim);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--amber-d);flex-shrink:0">O</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--tp)">Ops</div>
+          <div style="color:#EF9F27;font-size:12px">★★★<span style="color:var(--border2)">★★</span></div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--ts);line-height:1.6;font-style:italic">"Todos lo ven, nadie lo procesa. Sin ownership claro, la crítica espera igual que la informativa."</p>
+    </div>
+    <div class="card card-hover">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--purple-dim);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--purple-d);flex-shrink:0">S</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--tp)">Soporte</div>
+          <div style="color:#EF9F27;font-size:12px">★★<span style="color:var(--border2)">★★★</span></div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--ts);line-height:1.6;font-style:italic">"El 80% es ruido. Pero eso se midió un día atípico y nunca se volvió a comprobar de forma sostenida."</p>
+    </div>
+  </div>
+
+  <!-- 4 DIMENSIONES DEL PROBLEMA -->
+  <div class="grid g2 reveal delay-3">
+    <div class="card card-hover" style="border-top:3px solid var(--red)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div class="ibox" style="background:var(--red-dim)">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#E24B4A" stroke-width="1.6" stroke-linecap="round"><polyline points="1,14 4,8 7,12 10,4 13,9 16,6 19,10"/></svg>
+        </div>
+        <div style="font-size:15px;font-weight:600;color:var(--tp)">Datos</div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        <span class="tag" style="background:var(--red-dim);color:var(--red-t)">crudos</span>
+        <span class="tag" style="background:var(--red-dim);color:var(--red-t)">sin contexto</span>
+        <span class="tag" style="background:var(--red-dim);color:var(--red-t)">sin procesar</span>
+        <span class="tag" style="background:var(--red-dim);color:var(--red-t)">duplicados</span>
+        <span class="tag" style="background:var(--red-dim);color:var(--red-t)">ruido ≠ señal</span>
+      </div>
+    </div>
+    <div class="card card-hover" style="border-top:3px solid var(--amber)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div class="ibox" style="background:var(--amber-dim)">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#EF9F27" stroke-width="1.6" stroke-linecap="round"><rect x="2" y="3" width="16" height="14" rx="2"/><line x1="6" y1="10" x2="6" y2="14"/><line x1="10" y1="7" x2="10" y2="14"/><line x1="14" y1="5" x2="14" y2="14"/><circle cx="6" cy="8" r="1.5" fill="#EF9F27"/></svg>
+        </div>
+        <div style="font-size:15px;font-weight:600;color:var(--tp)">Orden</div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        <span class="tag" style="background:var(--amber-dim);color:var(--amber-t)">sin visibilidad</span>
+        <span class="tag" style="background:var(--amber-dim);color:var(--amber-t)">sin prioridad</span>
+        <span class="tag" style="background:var(--amber-dim);color:var(--amber-t)">sin severidad</span>
+        <span class="tag" style="background:var(--amber-dim);color:var(--amber-t)">sin definición de crítico</span>
+      </div>
+    </div>
+    <div class="card card-hover" style="border-top:3px solid var(--green)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div class="ibox" style="background:var(--green-dim)">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#5DCAA5" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="8" r="5"/><line x1="8" y1="12" x2="3" y2="17"/></svg>
+        </div>
+        <div style="font-size:15px;font-weight:600;color:var(--tp)">Patrones</div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">noche ¿siempre?</span>
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">finde ¿por qué?</span>
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">ráfagas efímeras</span>
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">crónicos sin detectar</span>
+      </div>
+    </div>
+    <div class="card card-hover" style="border-top:3px solid var(--purple)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div class="ibox" style="background:var(--purple-dim)">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#A29BFE" stroke-width="1.6" stroke-linecap="round"><path d="M7 2 L13 2 L13 8 L10 11 L7 8 Z"/><path d="M7 18 L13 18 L13 12 L10 9 L7 12 Z"/><line x1="6" y1="2" x2="14" y2="2"/><line x1="6" y1="18" x2="14" y2="18"/></svg>
+        </div>
+        <div style="font-size:15px;font-weight:600;color:var(--tp)">Tiempo</div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        <span class="tag" style="background:var(--purple-dim);color:var(--purple-t)">sin ownership</span>
+        <span class="tag" style="background:var(--purple-dim);color:var(--purple-t)">enfermedad normalizada</span>
+        <span class="tag" style="background:var(--purple-dim);color:var(--purple-t)">sin atención temprana</span>
+      </div>
+    </div>
+  </div>
+  <div class="footnote reveal delay-4">⚠️ Una herramienta anterior funcionó técnicamente y murió sin que nadie tomara la decisión de matarla: nunca se midió si cambiaba algo.</div>
+</div>
+</section>
+
+<!-- ══════════════════════════════════════════════════
+     PÁGINA 3 — PANEL
+══════════════════════════════════════════════════ -->
+<section id="s2">
+<div class="section-inner">
+  <div class="reveal">
+    <div class="sec-header">
+      <div class="sec-icon" style="background:var(--green-dim)">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5DCAA5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="14" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="12" y1="9" x2="12" y2="17"/><rect x="7.5" y="11" width="3" height="3" rx="0.5"/><rect x="13.5" y="11" width="3" height="3" rx="0.5"/></svg>
+      </div>
+      <div>
+        <div class="sec-eyebrow" style="color:var(--green)">02</div>
+        <h2 class="sec-title">Panel</h2>
+      </div>
+    </div>
+    <div class="accent-line"></div>
+  </div>
+
+  <div class="card-lead reveal delay-1" style="border-left:3px solid var(--green)">
+    Un archivo HTML autocontenido que Ops abre con doble clic — sin instalaciones, sin internet, sin backend — y entiende en dos minutos qué merece atención hoy.
+  </div>
+
+  <!-- MÉTRICAS INICIALES -->
+  <div class="grid g4 reveal delay-2" style="margin-bottom:12px">
+    <div class="card card-hover">
+      <div class="label">Alertas crudas</div>
+      <div class="value">458</div>
+      <div class="sub">mensajes de Slack sin procesar</div>
+    </div>
+    <div class="card card-hover">
+      <div class="label">Incidentes</div>
+      <div class="value">277</div>
+      <div class="sub">episodios únicos deduplicados</div>
+    </div>
+    <div class="card card-hover tint-cyan">
+      <div class="label" style="color:var(--cyan)">Compresión</div>
+      <div class="value" style="color:var(--cyan)">39.5%</div>
+      <div class="sub">menos ruido a procesar</div>
+    </div>
+    <div class="card card-hover tint-red">
+      <div class="label" style="color:var(--red-t)">P1 · atiende ahora</div>
+      <div class="value" style="color:var(--red-t)">16</div>
+      <div class="sub">score ≥ 70</div>
+    </div>
+  </div>
+
+  <!-- 4 CARDS DEL PANEL -->
+  <div class="grid g2 reveal delay-3">
+    <!-- DIGEST -->
+    <div class="card card-hover">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div class="ibox" style="background:var(--amber-dim)">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#EF9F27" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2 L16 2 L13 10 L16 18 L4 18 L7 10 Z"/></svg>
+        </div>
+        <div style="font-size:15px;font-weight:600;color:var(--tp)">Digest</div>
+      </div>
+      <p style="font-size:12px;color:var(--ts);line-height:1.5;margin-bottom:10px">El resumen narrado que se lee en 2 minutos cada lunes. Gemini 2.5 Flash narra — los números vienen calculados del pipeline. Funciona sin API key con plantilla determinista.</p>
+      <div style="background:var(--bg3);border-radius:8px;padding:10px 12px;border-left:2px solid var(--amber)">
+        <div style="font-size:10px;font-weight:600;color:var(--tt);margin-bottom:6px">Ejemplo real del digest</div>
+        <p style="margin:0 0 4px;font-size:12px;color:var(--tp);font-weight:500">🔴 Hairs · Payments rejected (score 73 · P1)</p>
+        <p style="margin:0 0 8px;font-size:11px;color:var(--ts);font-style:italic">"Rechazos de pago apareciendo en #sre — canal inusual. Revisar integración con el flujo de cobro."</p>
+        <p style="margin:0 0 4px;font-size:12px;color:var(--amber);font-weight:500">⚙️ Orchestrator · 500s crónicos (score 44 · P2)</p>
+        <p style="margin:0;font-size:11px;color:var(--ts);font-style:italic">"42 episodios en el período. Patrón estructural — candidato a ticket de deuda técnica."</p>
+      </div>
+    </div>
+
+    <!-- MÉTRICAS ANIDADAS -->
+    <div class="card card-hover">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div class="ibox" style="background:rgba(27,86,165,0.15)">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#4A90D9" stroke-width="1.6" stroke-linecap="round"><rect x="2" y="2" width="16" height="16" rx="2"/><line x1="7" y1="2" x2="7" y2="18"/><line x1="2" y1="10" x2="18" y2="10"/></svg>
+        </div>
+        <div style="font-size:15px;font-weight:600;color:var(--tp)">Métricas iniciales</div>
+      </div>
+      <div class="grid g2" style="gap:7px">
+        <div style="background:var(--bg3);border-radius:8px;padding:8px 10px">
+          <div style="font-size:10px;color:var(--tt)">Alertas crudas</div>
+          <div style="font-size:22px;font-weight:600;color:var(--tp)">458</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:8px;padding:8px 10px">
+          <div style="font-size:10px;color:var(--tt)">Incidentes</div>
+          <div style="font-size:22px;font-weight:600;color:var(--tp)">277</div>
+        </div>
+        <div style="background:var(--green-dim);border-radius:8px;padding:8px 10px">
+          <div style="font-size:10px;color:var(--green-t)">Compresión</div>
+          <div style="font-size:22px;font-weight:600;color:var(--green)">39.5%</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div style="background:var(--red-dim);border-radius:7px;padding:5px 8px;display:flex;justify-content:space-between"><span style="font-size:10px;font-weight:600;color:var(--red-t)">P1</span><span style="color:var(--red);font-weight:600">16</span></div>
+          <div style="background:var(--amber-dim);border-radius:7px;padding:5px 8px;display:flex;justify-content:space-between"><span style="font-size:10px;font-weight:600;color:var(--amber-t)">P2</span><span style="color:var(--amber);font-weight:600">175</span></div>
+          <div style="background:var(--bg3);border-radius:7px;padding:5px 8px;display:flex;justify-content:space-between"><span style="font-size:10px;color:var(--ts)">P3</span><span style="color:var(--ts);font-weight:600">86</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRIAGE -->
+    <div class="card card-hover">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div class="ibox" style="background:var(--purple-dim)">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#A29BFE" stroke-width="1.6" stroke-linecap="round"><line x1="4" y1="5" x2="16" y2="5"/><line x1="4" y1="9" x2="16" y2="9"/><line x1="4" y1="13" x2="12" y2="13"/><circle cx="15" cy="15" r="3"/><line x1="13" y1="13" x2="12" y2="12"/></svg>
+        </div>
+        <div>
+          <div style="font-size:15px;font-weight:600;color:var(--tp)">Triage</div>
+          <div style="font-size:11px;color:var(--tt)">solo canal #sre</div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--ts);line-height:1.5;margin-bottom:10px">Incidentes ordenados por score: ¿qué atiendo primero? Cada uno con su banda, su explicación en cristiano y sus 5 componentes visibles.</p>
+      <div style="background:var(--purple-dim);border-radius:8px;padding:9px 11px;display:flex;gap:10px;align-items:flex-start">
+        <span style="font-size:18px;flex-shrink:0">🏥</span>
+        <div>
+          <div style="font-size:10px;font-weight:600;color:var(--purple-t);margin-bottom:2px">Analogía del hospital</div>
+          <p style="margin:0;font-size:11px;color:var(--purple);line-height:1.4">La <strong>sala de urgencias</strong>: llegan pacientes distintos y hay que ordenarlos por gravedad. El score es el criterio de triage. P1 pasa directo, P3 espera.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMPOSICIÓN -->
+    <div class="card card-hover">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div class="ibox" style="background:var(--coral-dim)">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#FF8A5C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="16" height="11" rx="2"/><line x1="2" y1="9" x2="18" y2="9"/><line x1="6" y1="9" x2="6" y2="16"/><line x1="10" y1="9" x2="10" y2="16"/></svg>
+        </div>
+        <div>
+          <div style="font-size:15px;font-weight:600;color:var(--tp)">Composición</div>
+          <div style="font-size:11px;color:var(--tt)">solo canal #cx</div>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--ts);line-height:1.5;margin-bottom:10px">Agregación de rechazos de pago por tipo y procesador. El KPI mensual de Payments vive aquí: 29.5% son fondos insuficientes.</p>
+      <div style="background:var(--coral-dim);border-radius:8px;padding:9px 11px;display:flex;gap:10px;align-items:flex-start">
+        <span style="font-size:18px;flex-shrink:0">📊</span>
+        <div>
+          <div style="font-size:10px;font-weight:600;color:var(--coral);margin-bottom:2px">Analogía del hospital</div>
+          <p style="margin:0;font-size:11px;color:var(--coral);line-height:1.4">El <strong>reporte epidemiológico</strong>: no importa el paciente de hoy, importa de qué se enferma la <em>población</em>. Composición, tendencia, KPI.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footnote reveal delay-4">💡 panel.html · autocontenido · abre con doble clic · funciona sin internet · crónicos agrupados como expedientes · etiquetas exportan labels.csv</div>
+</div>
+</section>
+
+<!-- ══════════════════════════════════════════════════
+     PÁGINA 4 — DICCIONARIO Y EDA
+══════════════════════════════════════════════════ -->
+<section id="s3">
+<div class="section-inner">
+  <div class="reveal">
+    <div class="sec-header">
+      <div class="sec-icon" style="background:var(--purple-dim)">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A29BFE" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3 H14 L20 9 V21 H4 Z"/><path d="M14 3 V9 H20"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="8" y1="9" x2="12" y2="9"/></svg>
+      </div>
+      <div>
+        <div class="sec-eyebrow" style="color:var(--purple)">03</div>
+        <h2 class="sec-title">Diccionario y EDA</h2>
+      </div>
+    </div>
+    <div class="accent-line"></div>
+  </div>
+
+  <div class="card-lead reveal delay-1" style="border-left:3px solid var(--purple)">
+    El JSON llegó sin manual de instrucciones. Construir el diccionario significó interrogar cada campo, descubrir relaciones que nadie había documentado y detectar relojes rotos. El EDA no fue exploración libre — fue una auditoría forense que reveló tres periodos disjuntos, un metrónomo disfrazado de timestamp y dos enfermedades crónicas con nombre y apellido.
+  </div>
+
+  <div class="grid g2 reveal delay-2" style="margin-bottom:12px">
+    <!-- CAMPOS INICIALES -->
+    <div class="card card-hover">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px">
+        <div class="ibox" style="background:rgba(27,86,165,0.15)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#4A90D9" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="2" width="14" height="14" rx="2"/><line x1="2" y1="6" x2="16" y2="6"/><line x1="7" y1="6" x2="7" y2="16"/></svg></div>
+        <div style="font-size:14px;font-weight:600;color:var(--tp)">12 Campos iniciales</div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">
+        <code>ts</code><code>timestamp</code><code>channel</code><code>source</code>
+        <code>service</code><code>condition</code><code>priority</code><code>threshold</code>
+        <code>policy</code><code>error_type</code><code>error_message</code><code>incidents</code>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--ts)">
+        <div><strong style="color:var(--tp)">ts / timestamp</strong> — el reloj (uno confiable por canal)</div>
+        <div><strong style="color:var(--tp)">service + condition</strong> — la identidad del problema (fingerprint)</div>
+        <div><strong style="color:var(--tp)">error_type / error_message</strong> — solo en cx, el KPI</div>
+        <div><strong style="color:var(--tp)">incidents</strong> — ya comprimidos por New Relic antes de llegar</div>
+      </div>
+    </div>
+
+    <!-- JERARQUÍA OCULTA -->
+    <div class="card card-hover">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px">
+        <div class="ibox" style="background:var(--green-dim)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#5DCAA5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="4" r="2.5"/><circle cx="3" cy="14" r="2"/><circle cx="15" cy="14" r="2"/><line x1="9" y1="6.5" x2="4" y2="12.5"/><line x1="9" y1="6.5" x2="14" y2="12.5"/></svg></div>
+        <div style="font-size:14px;font-weight:600;color:var(--tp)">Jerarquía oculta</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:8px;padding:9px 11px;font-family:ui-monospace,monospace;font-size:12px;color:var(--tp);margin-bottom:8px;line-height:1.9">
+        channel ← policy ← condition ← service<br>
+        <span style="color:var(--tt)">&nbsp;&nbsp;(2)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(5)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(23)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(28)</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--ts)">
+        <div><span style="color:var(--green);font-weight:600">policy → channel</span> es partición perfecta</div>
+        <div><span style="color:var(--green);font-weight:600">condition → policy</span> es 1 a 1 en las 23</div>
+        <div><span style="color:var(--green);font-weight:600">service ↔ condition</span> muchos a muchos con personalidad</div>
+      </div>
+    </div>
+
+    <!-- POLICY Y NEW RELIC -->
+    <div class="card card-hover">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px">
+        <div class="ibox" style="background:var(--amber-dim)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#EF9F27" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3 h12 v5 l-3 3 l3 3 v2 H3 v-2 l3-3 l-3-3 Z"/></svg></div>
+        <div style="font-size:14px;font-weight:600;color:var(--tp)">Policy y New Relic</div>
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">
+        <span class="tag" style="background:var(--amber-dim);color:var(--amber-t)">Golden Signals</span>
+        <span class="tag" style="background:var(--bg3);color:var(--ts)">Parco2.0 strict</span>
+        <span class="tag" style="background:var(--bg3);color:var(--ts)">CX</span>
+        <span class="tag" style="background:var(--bg3);color:var(--ts)">Up_Satatus_Parco</span>
+        <span class="tag" style="background:var(--bg3);color:var(--ts)">None</span>
+      </div>
+      <div style="background:var(--amber-dim);border-radius:7px;padding:7px 9px;margin-bottom:6px">
+        <div style="font-size:10px;font-weight:600;color:var(--amber-t);margin-bottom:2px">🏥 New Relic = enfermera de guardia</div>
+        <p style="margin:0;font-size:11px;color:var(--amber);line-height:1.4">Mide los cuatro signos vitales (Golden Signals = latencia, tráfico, errores, saturación) y grita cuando cruza la línea roja. No arregla — detecta. 254 de 458 alertas son Golden Signals.</p>
+      </div>
+    </div>
+
+    <!-- SERVICES -->
+    <div class="card card-hover">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px">
+        <div class="ibox" style="background:var(--green-dim)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#5DCAA5" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="3" width="14" height="12" rx="2"/><line x1="6" y1="3" x2="6" y2="15"/><line x1="10" y1="3" x2="10" y2="15"/><line x1="14" y1="3" x2="14" y2="15"/></svg></div>
+        <div style="font-size:14px;font-weight:600;color:var(--tp)">Services · 28 → 6 grupos</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0"></span><span style="font-size:11px;color:var(--tp);font-weight:600">Pagos</span><span style="font-size:10px;color:var(--tt)">Hairs, Wallet 2.0, Chargehound, PayPal…</span></div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:var(--amber);flex-shrink:0"></span><span style="font-size:11px;color:var(--tp);font-weight:600">Núcleo</span><span style="font-size:10px;color:var(--tt)">Orchestrator, Carts, Users, Peajero…</span></div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:var(--purple);flex-shrink:0"></span><span style="font-size:11px;color:var(--tp);font-weight:600">Code name</span><span style="font-size:10px;color:var(--tt)">tesseract, Cerberus, Kraken…</span></div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:var(--ts);flex-shrink:0"></span><span style="font-size:11px;color:var(--tp);font-weight:600">Infra</span><span style="font-size:10px;color:var(--tt)">6 hosts EC2 — agrupados, identidad conservada</span></div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0"></span><span style="font-size:11px;color:var(--tp);font-weight:600">Datos</span><span style="font-size:10px;color:var(--tt)">data-team · RDS</span></div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:var(--cyan);flex-shrink:0"></span><span style="font-size:11px;color:var(--tp);font-weight:600">Web</span><span style="font-size:10px;color:var(--tt)">Wiki, Wordpress, Web Page Parco</span></div>
+      </div>
+    </div>
+
+    <!-- CONDITIONS -->
+    <div class="card card-hover">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px">
+        <div class="ibox" style="background:var(--pink-dim)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#ED93B1" stroke-width="1.5" stroke-linecap="round"><path d="M2 9 L5 5 L7 8 L10 3 L12 7 L14 5 L16 9"/><rect x="2" y="11" width="14" height="4" rx="1"/></svg></div>
+        <div style="font-size:14px;font-weight:600;color:var(--tp)">Conditions · 23 plantillas</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:7px;padding:7px 9px;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:22px;font-weight:600;color:var(--tp)">23</span>
+        <span style="font-size:11px;color:var(--ts)">plantillas exactas · exact-match basta</span>
+      </div>
+      <p style="margin:0 0 7px;font-size:11px;color:var(--ts);line-height:1.5">No son texto libre. Sin embeddings, sin LLM para agrupar — exact-match es suficiente y más robusto.</p>
+      <div style="background:var(--pink-dim);border-radius:7px;padding:6px 9px;font-size:11px;color:var(--pink)">Las 23 conditions están documentadas con traducción, conteo y analogía en el Diccionario de Notion.</div>
+    </div>
+
+    <!-- THRESHOLDS -->
+    <div class="card card-hover">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px">
+        <div class="ibox" style="background:var(--coral-dim)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#FF8A5C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="14" x2="16" y2="14"/><line x1="9" y1="14" x2="9" y2="4"/><path d="M5 8 L9 4 L13 8"/></svg></div>
+        <div style="font-size:14px;font-weight:600;color:var(--tp)">Thresholds</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:7px;padding:7px 10px;font-family:ui-monospace,monospace;font-size:11px;color:var(--tp);margin-bottom:8px">
+        operador + valor + unidad / ventana<br>
+        <span style="color:var(--coral)">ejemplo:</span> <span style="color:var(--tp)">&gt;55 req/5min</span> → critical estático
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px;margin-bottom:7px;font-size:11px;color:var(--ts)">
+        <div><strong style="color:var(--tp)">tipo_regla</strong> — estática vs anomalía (baseline)</div>
+        <div><strong style="color:var(--tp)">dirección</strong> — sobre / bajo el umbral</div>
+        <div><strong style="color:var(--tp)">ventana_eval</strong> — 3 min, 5 min, 10 min</div>
+      </div>
+      <div style="background:var(--coral-dim);border-radius:7px;padding:6px 9px">
+        <div style="font-size:10px;font-weight:600;color:var(--coral);margin-bottom:2px">53 alertas con "baseline"</div>
+        <p style="margin:0;font-size:11px;color:var(--coral);line-height:1.4">New Relic usó su historial propio — todas son critical → <code>s_intensidad = 1.0</code></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- VARIABLES NUEVAS Y EDA -->
+  <div class="grid g2 reveal delay-3" style="margin-top:4px">
+    <div class="card card-hover">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px">
+        <div class="ibox" style="background:var(--green-dim)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#5DCAA5" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="7"/><line x1="9" y1="5" x2="9" y2="9"/><line x1="9" y1="9" x2="13" y2="9"/><circle cx="9" cy="9" r="1" fill="#5DCAA5"/></svg></div>
+        <div style="font-size:14px;font-weight:600;color:var(--tp)">Variables nuevas creadas</div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px">
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">fingerprint</span>
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">incident_id</span>
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">n_alertas</span>
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">n_disparos</span>
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">duracion_min</span>
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">tipo_regla</span>
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">direccion</span>
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">procesador</span>
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">grupo_criticidad</span>
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">es_recurrente</span>
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">s_criticidad</span>
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">s_ficha</span>
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">s_rafaga</span>
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">s_intensidad</span>
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">s_novedad</span>
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">score</span>
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">banda</span>
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">explicacion</span>
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">atendido</span>
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">etiqueta</span>
+      </div>
+      <div style="margin-top:7px;font-size:10px;color:var(--tt)">458 alertas → 30 columnas por incidente en incidents.csv</div>
+    </div>
+
+    <div class="card card-hover">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px">
+        <div class="ibox" style="background:var(--purple-dim)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#A29BFE" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="5" r="3"/><path d="M10 5 H3"/><circle cx="5" cy="9" r="3"/><path d="M8 9 H15"/><circle cx="13" cy="13" r="3"/><path d="M10 13 H3"/></svg></div>
+        <div style="font-size:14px;font-weight:600;color:var(--tp)">EDA — 5 hallazgos clave</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <span class="tag" style="background:var(--purple-dim);color:var(--purple-t);flex-shrink:0">1</span>
+          <p style="margin:0;font-size:11px;color:var(--ts);line-height:1.4"><strong style="color:var(--tp)">3 exports disjuntos</strong> — sre: may-jun 2025, cx: mar 2026. Un año de diferencia, sin solapamiento.</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <span class="tag" style="background:var(--purple-dim);color:var(--purple-t);flex-shrink:0">2</span>
+          <p style="margin:0;font-size:11px;color:var(--ts);line-height:1.4"><strong style="color:var(--tp)">El ts de cx es un metrónomo</strong> — gap exacto de 5.0 min (95 × 5 = 7.9 h). Imposible en tráfico real.</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <span class="tag" style="background:var(--red-dim);color:var(--red-t);flex-shrink:0">3</span>
+          <p style="margin:0;font-size:11px;color:var(--ts);line-height:1.4"><strong style="color:var(--tp)">Orchestrator: enfermedad crónica</strong> — 104 alertas, 100% errores 500. El coordinador fallando todos los días.</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <span class="tag" style="background:var(--amber-dim);color:var(--amber-t);flex-shrink:0">4</span>
+          <p style="margin:0;font-size:11px;color:var(--ts);line-height:1.4"><strong style="color:var(--tp)">data-team a las 2am</strong> — RDS CPU alto 6 días distintos, siempre ~2am. El ETL nocturno disfrazado de alerta crítica.</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <span class="tag" style="background:var(--green-dim);color:var(--green-t);flex-shrink:0">5</span>
+          <p style="margin:0;font-size:11px;color:var(--ts);line-height:1.4"><strong style="color:var(--tp)">New Relic ya comprimió antes</strong> — la columna incidents empaqueta disparos simultáneos: 458 mensajes encierran 667 disparos reales.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ══════════════════════════════════════════════════
+     PÁGINA 5 — SCORE
+══════════════════════════════════════════════════ -->
+<section id="s4">
+<div class="section-inner">
+  <div class="reveal">
+    <div class="sec-header">
+      <div class="sec-icon" style="background:var(--amber-dim)">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EF9F27" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
+      </div>
+      <div>
+        <div class="sec-eyebrow" style="color:var(--amber)">04</div>
+        <h2 class="sec-title">Score</h2>
+        <div class="sec-subtitle">Del crédito a la Prioridad</div>
+      </div>
+    </div>
+    <div class="accent-line"></div>
+  </div>
+
+  <div class="card-lead reveal delay-1" style="border-left:3px solid var(--amber)">
+    Un score crediticio no dice "parece confiable" — da un número compuesto de variables con peso declarado. El Priority Score replica exactamente esa lógica: cinco variables con peso explícito, calculadas sobre cada incidente, que traducen información técnica dispersa en un número único que cualquier persona puede leer y actuar. Sin cajas negras — cada punto es auditable componente por componente.
+  </div>
+
+  <!-- FÓRMULA -->
+  <div class="card reveal delay-2" style="font-family:ui-monospace,monospace;margin-bottom:14px;background:var(--bg3)">
+    <div style="font-size:10px;color:var(--tt);margin-bottom:8px">Fórmula del Priority Score</div>
+    <div style="font-size:14px;line-height:2.1;color:var(--tp)">
+      score = 100 × (
+      <span style="color:var(--red)">0.30 · s_criticidad</span> +
+      <span style="color:var(--amber)">0.25 · s_ficha</span> +
+      <span style="color:var(--purple)">0.20 · s_rafaga</span> +
+      <span style="color:var(--green)">0.15 · s_intensidad</span> +
+      <span style="color:var(--pink)">0.10 · s_novedad</span> )
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+      <span class="tag" style="background:var(--red-dim);color:var(--red-t)">P1 ≥ 70 · Atiende ahora</span>
+      <span class="tag" style="background:var(--amber-dim);color:var(--amber-t)">P2 40–69 · Revisa hoy</span>
+      <span class="tag" style="background:var(--bg3);color:var(--ts);border:1px solid var(--border2)">P3 &lt;40 · Informativo</span>
+      <span style="font-size:10px;color:var(--tt);display:flex;align-items:center">Pesos v0 en config.yaml · recalibrables con etiquetas (día 60+)</span>
+    </div>
+  </div>
+
+  <!-- CALCULADORA INTERACTIVA -->
+  <div class="card reveal delay-3" style="margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:13px;font-weight:600;color:var(--tp)">🎛️ Calculadora interactiva — mueve s_ficha para ver el efecto en vivo</div>
+      <div id="banda-disp" style="font-size:11px;font-weight:700;padding:3px 14px;border-radius:10px"></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px">
+      <div style="font-size:3rem;font-weight:700;color:var(--tp);min-width:60px" id="score-num">36</div>
+      <div style="flex:1">
+        <div style="height:10px;background:var(--border);border-radius:5px;overflow:hidden;position:relative;margin-bottom:5px">
+          <div style="position:absolute;left:40%;width:30%;height:100%;background:var(--amber-dim)"></div>
+          <div style="position:absolute;left:70%;width:30%;height:100%;background:var(--red-dim)"></div>
+          <div id="score-mk" style="position:absolute;top:-2px;width:3px;height:14px;background:var(--cyan);border-radius:2px;transition:left 0.2s"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--tt)">
+          <span>0</span><span style="color:var(--amber-t)">40 P2</span><span style="color:var(--red-t)">70 P1</span><span>100</span>
+        </div>
+      </div>
+    </div>
+    <div id="sliders-wrap"></div>
+  </div>
+
+  <script>
+  const SC=[
+    {id:'cr',lbl:'s_criticidad',desc:'¿qué tan vital es el servicio?',w:0.30,v:0.6,c:'#E24B4A',bg:'rgba(226,75,74,0.12)',fg:'#F2A7A0'},
+    {id:'fi',lbl:'s_ficha',desc:'¿se porta como acostumbra?',w:0.25,v:0.0,c:'#EF9F27',bg:'rgba(239,159,39,0.12)',fg:'#F4C277'},
+    {id:'ra',lbl:'s_rafaga',desc:'¿con qué intensidad insiste?',w:0.20,v:0.4,c:'#A29BFE',bg:'rgba(162,155,254,0.12)',fg:'#C5C1FB'},
+    {id:'in',lbl:'s_intensidad',desc:'¿qué tan fuerte gritó New Relic?',w:0.15,v:0.75,c:'#5DCAA5',bg:'rgba(29,158,117,0.12)',fg:'#7FE0BE'},
+    {id:'no',lbl:'s_novedad',desc:'¿es la primera vez que existe?',w:0.10,v:0.0,c:'#ED93B1',bg:'rgba(237,147,177,0.12)',fg:'#F4C0D1'}
+  ];
+  const sw=document.getElementById('sliders-wrap');
+  SC.forEach(s=>{
+    const r=document.createElement('div');
+    r.style.cssText='display:grid;grid-template-columns:150px 1fr 95px 44px;align-items:center;gap:10px;margin-bottom:9px';
+    r.innerHTML='<div><div style="font-size:12px;font-weight:600;color:'+s.c+'">'+s.lbl+'</div><div style="font-size:10px;color:var(--tt)">'+s.desc+'</div></div>'+
+      '<input type="range" min="0" max="1" step="0.05" value="'+s.v+'" id="sl-'+s.id+'" oninput="recS()">'+
+      '<div style="background:'+s.bg+';color:'+s.fg+';font-size:10px;font-weight:700;padding:3px 8px;border-radius:7px;text-align:center">×'+s.w.toFixed(2)+'</div>'+
+      '<div id="vl-'+s.id+'" style="font-size:12px;font-weight:600;text-align:right;color:var(--tp)">'+s.v.toFixed(2)+'</div>';
+    sw.appendChild(r);
+  });
+  function recS(){
+    let t=0;
+    SC.forEach(s=>{
+      const v=parseFloat(document.getElementById('sl-'+s.id).value);
+      document.getElementById('vl-'+s.id).textContent=v.toFixed(2);
+      t+=s.w*v;
+    });
+    const sc=Math.round(t*100);
+    document.getElementById('score-num').textContent=sc;
+    document.getElementById('score-mk').style.left='calc('+sc+'% - 1.5px)';
+    const p=document.getElementById('banda-disp');
+    if(sc>=70){p.textContent='P1 · Atiende ahora';p.style.background='rgba(226,75,74,0.14)';p.style.color='#F2A7A0';}
+    else if(sc>=40){p.textContent='P2 · Revisa hoy';p.style.background='rgba(239,159,39,0.14)';p.style.color='#F4C277';}
+    else{p.textContent='P3 · Informativo';p.style.background='rgba(255,255,255,0.05)';p.style.color='var(--ts)';}
+  }
+  recS();
+  </script>
+
+  <!-- 5 COMPONENTES -->
+  <div class="grid g2 reveal delay-4" style="margin-bottom:12px">
+    <div class="card card-hover" style="border-top:3px solid var(--red)">
+      <div style="font-size:13px;font-weight:600;color:var(--red);margin-bottom:4px">s_criticidad <span style="font-size:10px;color:var(--tt);font-weight:400">peso 0.30</span></div>
+      <p style="margin:0 0 8px;font-size:11px;color:var(--ts);line-height:1.5">¿Qué tan vital es el servicio? Un fallo en Pagos duele más que uno en la página web.</p>
+      <div style="background:var(--red-dim);border-radius:7px;padding:7px 9px">
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--red-t)">Pagos</span><span style="color:var(--red);font-weight:700">1.0</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--red-t)">Núcleo</span><span style="color:var(--red);font-weight:700">0.8</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--red-t)">Code name / Datos</span><span style="color:var(--red);font-weight:700">0.6</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--red-t)">Infra / Web</span><span style="color:var(--red);font-weight:700">0.4–0.5</span></div>
+        </div>
+      </div>
+      <div style="margin-top:6px;font-size:10px;color:var(--tt)">Definida en config.yaml · inferida del dato · validar en semana 0</div>
+    </div>
+
+    <div class="card card-hover" style="border-top:3px solid var(--amber)">
+      <div style="font-size:13px;font-weight:600;color:var(--amber);margin-bottom:4px">s_ficha <span style="font-size:10px;color:var(--tt);font-weight:400">peso 0.25</span></div>
+      <p style="margin:0 0 8px;font-size:11px;color:var(--ts);line-height:1.5">¿Se porta como acostumbra? La ficha recoge la costumbre histórica y mide qué tan atípico es el incidente de hoy.</p>
+      <div style="background:var(--amber-dim);border-radius:7px;padding:7px 9px;margin-bottom:7px">
+        <div style="font-size:10px;font-weight:700;color:var(--amber-d);margin-bottom:4px">🍽️ Analogía del restaurante</div>
+        <div style="display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--amber-t)">
+          <div><strong>dias_visto</strong> — ¿cuántos días distintos ha venido?</div>
+          <div><strong>hora_tipica</strong> — ¿a qué hora suele aparecer?</div>
+          <div><strong>sello_finde</strong> — ¿solo en fin de semana?</div>
+          <div><strong>rafaga_tipica</strong> — ¿cuántas alertas trae normalmente?</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:2px;font-size:10px;color:var(--ts)">
+        <div style="display:flex;justify-content:space-between"><span>Sin historial (&lt;3 días)</span><span style="font-weight:600;color:var(--tp)">0.9</span></div>
+        <div style="display:flex;justify-content:space-between"><span>Recurrente, fuera de horario</span><span style="font-weight:600;color:var(--tp)">0.6</span></div>
+        <div style="display:flex;justify-content:space-between"><span>Hora normal, ráfaga mayor</span><span style="font-weight:600;color:var(--tp)">0.1</span></div>
+        <div style="display:flex;justify-content:space-between"><span>Todo dentro del patrón habitual</span><span style="font-weight:600;color:var(--tp)">0.0</span></div>
+      </div>
+    </div>
+
+    <div class="card card-hover" style="border-top:3px solid var(--purple)">
+      <div style="font-size:13px;font-weight:600;color:var(--purple);margin-bottom:4px">s_rafaga <span style="font-size:10px;color:var(--tt);font-weight:400">peso 0.20</span></div>
+      <p style="margin:0 0 8px;font-size:11px;color:var(--ts);line-height:1.5">¿Con qué intensidad insiste el sistema? Combina volumen y velocidad.</p>
+      <div style="background:var(--purple-dim);border-radius:7px;padding:7px 9px">
+        <div style="font-size:11px;color:var(--purple-t);margin-bottom:3px"><strong>n_disparos</strong> — suma de la columna incidents (null→1)</div>
+        <div style="font-size:11px;color:var(--purple-t);margin-bottom:3px"><strong>tasa_por_min</strong> — disparos / duración del incidente</div>
+        <div style="font-size:11px;color:var(--purple-t)">Normalizado con log(n_disparos) para que un pico de 100 no aplaste al resto</div>
+      </div>
+      <p style="margin:6px 0 0;font-size:10px;color:var(--tt)">🍽️ Como el mesero contando palitos: el volumen importa, en escala logarítmica.</p>
+    </div>
+
+    <div class="card card-hover" style="border-top:3px solid var(--green)">
+      <div style="font-size:13px;font-weight:600;color:var(--green);margin-bottom:4px">s_intensidad <span style="font-size:10px;color:var(--tt);font-weight:400">peso 0.15</span></div>
+      <p style="margin:0 0 8px;font-size:11px;color:var(--ts);line-height:1.5">¿Qué tan fuerte gritó New Relic? Mide la fuerza de la señal de origen.</p>
+      <div style="background:var(--green-dim);border-radius:7px;padding:7px 9px">
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--green-t)">null (PayPal status)</span><span style="color:var(--green);font-weight:700">0.30</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--green-t)">high</span><span style="color:var(--green);font-weight:700">0.50</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--green-t)">critical estático (umbral fijo)</span><span style="color:var(--green);font-weight:700">0.75</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--green-t)">critical anomalía (baseline NR)</span><span style="color:var(--green);font-weight:700">1.00</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- S_NOVEDAD + EJEMPLO CANÓNICO -->
+  <div class="grid g2 reveal delay-4">
+    <div class="card card-hover" style="border-top:3px solid var(--pink)">
+      <div style="font-size:13px;font-weight:600;color:var(--pink);margin-bottom:4px">s_novedad <span style="font-size:10px;color:var(--tt);font-weight:400">peso 0.10</span></div>
+      <p style="margin:0 0 8px;font-size:11px;color:var(--ts);line-height:1.5">¿Es la primera vez que este fingerprint aparece? Lo desconocido merece atención aunque todo lo demás sea moderado.</p>
+      <div style="background:var(--pink-dim);border-radius:7px;padding:7px 9px;margin-bottom:7px">
+        <div style="display:flex;flex-direction:column;gap:2px">
+          <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--pink)">días_visto = 0 (primera vez)</span><span style="color:var(--pink);font-weight:700">1.0</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--pink)">días_visto = 1–2</span><span style="color:var(--pink);font-weight:700">0.5</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:var(--pink)">días_visto ≥ 3 (recurrente)</span><span style="color:var(--pink);font-weight:700">0.0</span></div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--ts);border-top:0.5px solid var(--border2);padding-top:7px"><strong style="color:var(--tp)">¿Por qué estos 5 pesos?</strong> Criticidad (0.30) porque el negocio no es igual para todos. Ficha (0.25) porque distingue emergencia real de ruido estructural. Novedad (0.10) porque la mayoría de lo que llega ya se vio antes.</div>
+    </div>
+
+    <!-- EJEMPLO CANÓNICO P1 -->
+    <div class="card" style="border:1.5px solid var(--red)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <span class="tag" style="background:var(--red-dim);color:var(--red-t)">P1 · Atiende ahora</span>
+        <div style="font-size:12px;font-weight:600;color:var(--tp)">Hairs · Payments rejected (en #sre)</div>
+      </div>
+      <div class="grid" style="grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:10px">
+        <div style="background:var(--red-dim);border-radius:7px;padding:6px 7px;text-align:center">
+          <div style="font-size:9px;color:var(--red-t);font-weight:600;margin-bottom:2px">s_criticidad</div>
+          <div style="font-size:17px;font-weight:700;color:var(--red)">1.0</div>
+          <div style="font-size:8px;color:var(--red-t)">Hairs = Pagos</div>
+          <div style="font-size:8px;color:var(--red-t);margin-top:2px">×0.30=0.30</div>
+        </div>
+        <div style="background:var(--amber-dim);border-radius:7px;padding:6px 7px;text-align:center">
+          <div style="font-size:9px;color:var(--amber-t);font-weight:600;margin-bottom:2px">s_ficha</div>
+          <div style="font-size:17px;font-weight:700;color:var(--amber)">0.9</div>
+          <div style="font-size:8px;color:var(--amber-t)">sin historial</div>
+          <div style="font-size:8px;color:var(--amber-t);margin-top:2px">×0.25=0.225</div>
+        </div>
+        <div style="background:var(--purple-dim);border-radius:7px;padding:6px 7px;text-align:center">
+          <div style="font-size:9px;color:var(--purple-t);font-weight:600;margin-bottom:2px">s_rafaga</div>
+          <div style="font-size:17px;font-weight:700;color:var(--purple)">0.2</div>
+          <div style="font-size:8px;color:var(--purple-t)">4 alertas</div>
+          <div style="font-size:8px;color:var(--purple-t);margin-top:2px">×0.20=0.04</div>
+        </div>
+        <div style="background:var(--green-dim);border-radius:7px;padding:6px 7px;text-align:center">
+          <div style="font-size:9px;color:var(--green-t);font-weight:600;margin-bottom:2px">s_intensidad</div>
+          <div style="font-size:17px;font-weight:700;color:var(--green)">0.5</div>
+          <div style="font-size:8px;color:var(--green-t)">high</div>
+          <div style="font-size:8px;color:var(--green-t);margin-top:2px">×0.15=0.075</div>
+        </div>
+        <div style="background:var(--pink-dim);border-radius:7px;padding:6px 7px;text-align:center">
+          <div style="font-size:9px;color:var(--pink);font-weight:600;margin-bottom:2px">s_novedad</div>
+          <div style="font-size:17px;font-weight:700;color:var(--pink)">0.9</div>
+          <div style="font-size:8px;color:var(--pink)">días_visto=1</div>
+          <div style="font-size:8px;color:var(--pink);margin-top:2px">×0.10=0.09</div>
+        </div>
+      </div>
+      <div style="background:var(--bg3);border-radius:7px;padding:7px 10px;display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
+        <span style="font-family:ui-monospace,monospace;font-size:11px;color:var(--ts)">100 × (0.30 + 0.225 + 0.040 + 0.075 + 0.090)</span>
+        <span style="font-size:18px;font-weight:700;color:var(--red)">= 73</span>
+      </div>
+      <div style="background:var(--red-dim);border-radius:7px;padding:7px 10px;font-size:11px;color:var(--red-t);line-height:1.5"><strong>¿Por qué P1?</strong> Servicio de pagos (criticidad máxima) + aparece en #sre donde casi nunca llegan rechazos (novedad alta + sin ficha) = el sistema detectando exactamente lo que debería detectar.</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ══════════════════════════════════════════════════
+     PÁGINA 6 — PIPELINE
+══════════════════════════════════════════════════ -->
+<section id="s5">
+<div class="section-inner">
+  <div class="reveal">
+    <div class="sec-header">
+      <div class="sec-icon" style="background:var(--amber-dim)">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EF9F27" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9 H9 V15 H15 V9 H20"/><circle cx="4" cy="9" r="2"/><circle cx="20" cy="9" r="2"/><rect x="9" y="6" width="6" height="6" rx="1"/></svg>
+      </div>
+      <div>
+        <div class="sec-eyebrow" style="color:var(--amber)">05</div>
+        <h2 class="sec-title">Pipeline</h2>
+      </div>
+    </div>
+    <div class="accent-line"></div>
+  </div>
+
+  <div class="card-lead reveal delay-1" style="border-left:3px solid var(--amber)">
+    Un DAG determinista de 7 capas donde cada archivo hace exactamente una cosa y entrega un contrato claro a la siguiente. Correr el pipeline dos veces produce el mismo resultado byte a byte. Cada perilla de negocio vive en <code>config.yaml</code>, no en el código.
+  </div>
+
+  <!-- FLUJO HORIZONTAL -->
+  <div class="reveal delay-2" style="overflow-x:auto;margin-bottom:20px">
+    <div style="display:flex;align-items:center;min-width:700px;gap:0;padding:8px 0">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:5px">
+        <div style="width:80px;height:64px;border-radius:10px;background:rgba(27,86,165,0.15);border:1px solid #4A90D9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#4A90D9" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="2" width="12" height="14" rx="2"/><line x1="6" y1="6" x2="12" y2="6"/><line x1="6" y1="9" x2="12" y2="9"/></svg>
+          <span style="font-size:9px;font-weight:700;color:#4A90D9">ingest</span>
+        </div>
+        <span style="font-size:8px;color:var(--tt)">L1</span>
+      </div>
+      <div style="width:18px;height:2px;background:var(--border2)"></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:5px">
+        <div style="width:80px;height:64px;border-radius:10px;background:var(--green-dim);border:1px solid var(--green);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#5DCAA5" stroke-width="1.5" stroke-linecap="round"><path d="M4 5 L8 5 L10 9 L8 13 L4 13 Z"/><path d="M14 5 L10 5 L8 9 L10 13 L14 13 Z"/></svg>
+          <span style="font-size:9px;font-weight:700;color:#5DCAA5">normalize</span>
+        </div>
+        <span style="font-size:8px;color:var(--tt)">L2</span>
+      </div>
+      <div style="width:18px;height:2px;background:var(--border2)"></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:5px">
+        <div style="width:80px;height:64px;border-radius:10px;background:var(--purple-dim);border:1px solid var(--purple);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#A29BFE" stroke-width="1.5" stroke-linecap="round"><circle cx="6" cy="9" r="3"/><circle cx="12" cy="9" r="3"/></svg>
+          <span style="font-size:9px;font-weight:700;color:#A29BFE">dedupe</span>
+        </div>
+        <span style="font-size:8px;color:var(--tt)">L3</span>
+      </div>
+      <div style="width:18px;height:2px;background:var(--border2)"></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:5px">
+        <div style="width:80px;height:64px;border-radius:10px;background:var(--pink-dim);border:1px solid var(--pink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#ED93B1" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="4" width="12" height="10" rx="2"/><line x1="6" y1="8" x2="12" y2="8"/><line x1="6" y1="11" x2="10" y2="11"/></svg>
+          <span style="font-size:9px;font-weight:700;color:#ED93B1">profiles</span>
+        </div>
+        <span style="font-size:8px;color:var(--tt)">L4</span>
+      </div>
+      <div style="width:18px;height:2px;background:var(--border2)"></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:5px">
+        <div style="width:80px;height:64px;border-radius:10px;background:var(--amber-dim);border:2px solid var(--amber);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#EF9F27" stroke-width="1.5" stroke-linecap="round"><circle cx="9" cy="9" r="6"/><line x1="9" y1="6" x2="9" y2="9"/><line x1="9" y1="9" x2="12" y2="11"/></svg>
+          <span style="font-size:9px;font-weight:700;color:#EF9F27">score ⭐</span>
+        </div>
+        <span style="font-size:8px;color:var(--tt)">L5</span>
+      </div>
+      <div style="width:18px;height:2px;background:var(--border2)"></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:5px">
+        <div style="width:80px;height:64px;border-radius:10px;background:var(--coral-dim);border:1px solid var(--coral);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#FF8A5C" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="5" height="12" rx="1"/><rect x="10" y="3" width="5" height="7" rx="1"/><rect x="10" y="12" width="5" height="3" rx="1"/></svg>
+          <span style="font-size:9px;font-weight:700;color:#FF8A5C">views</span>
+        </div>
+        <span style="font-size:8px;color:var(--tt)">L6</span>
+      </div>
+      <div style="width:18px;height:2px;background:var(--border2)"></div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:5px">
+        <div style="width:80px;height:64px;border-radius:10px;background:var(--cyan-dim);border:1px solid var(--cyan);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#4FD1D9" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="12" height="12" rx="2"/><polyline points="6,9 8,11 12,7"/></svg>
+          <span style="font-size:9px;font-weight:700;color:#4FD1D9">report</span>
+        </div>
+        <span style="font-size:8px;color:var(--tt)">L7</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7 CAPAS DETALLE -->
+  <div class="grid g2 reveal delay-3" style="margin-bottom:12px">
+    <div class="card card-hover">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px"><span class="tag" style="background:rgba(27,86,165,0.15);color:#4A90D9">L1</span><code style="font-size:12px">ingest.py</code></div>
+      <p style="margin:0 0 6px;font-size:11px;color:var(--ts);line-height:1.5">Carga el JSON y valida los 3 esquemas. Si llega algo desconocido, falla ruidosamente — mejor un error claro que datos corruptos silenciosos.</p>
+      <div style="background:rgba(27,86,165,0.10);border-radius:6px;padding:5px 8px;font-size:10px;color:#4A90D9"><strong>Contrato →</strong> lista de dicts validados + conteos por esquema/canal/source</div>
+    </div>
+    <div class="card card-hover">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px"><span class="tag" style="background:var(--green-dim);color:var(--green-t)">L2</span><code style="font-size:12px">normalize.py</code></div>
+      <p style="margin:0 0 6px;font-size:11px;color:var(--ts);line-height:1.5">Reloj por canal (ts/ISO), typos (Princes→Princess), agrupación infra, parseo de threshold en 3 derivados, extracción del procesador. 3 esquemas → 1 DataFrame canónico.</p>
+      <div style="background:var(--green-dim);border-radius:6px;padding:5px 8px;font-size:10px;color:var(--green-t)"><strong>Contrato →</strong> DataFrame 458 filas, dt confiable por canal, service/grupo/procesador normalizados</div>
+    </div>
+    <div class="card card-hover">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px"><span class="tag" style="background:var(--purple-dim);color:var(--purple-t)">L3</span><code style="font-size:12px">dedupe.py</code></div>
+      <p style="margin:0 0 6px;font-size:11px;color:var(--ts);line-height:1.5">Fingerprint (service, condition) + ventana 30 min → incidentes. Calcula inicio/fin, duracion, n_alertas, n_disparos (null→1), tasa_por_min. incident_id determinista.</p>
+      <div style="background:var(--purple-dim);border-radius:6px;padding:5px 8px;font-size:10px;color:var(--purple-t)"><strong>Contrato →</strong> 277 incidentes · sum(n_alertas)=458 · sum(n_disparos)=667 · MD5 estable</div>
+    </div>
+    <div class="card card-hover">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px"><span class="tag" style="background:var(--pink-dim);color:var(--pink)">L4</span><code style="font-size:12px">profiles.py</code></div>
+      <p style="margin:0 0 6px;font-size:11px;color:var(--ts);line-height:1.5">Ficha de recurrencia por fingerprint: dias_visto, horas_tipicas, sello_finde, rafaga_tipica. Por canal — nunca mezcla sre y cx. Sin z-scores: n=458 no lo sostiene.</p>
+      <div style="background:var(--pink-dim);border-radius:6px;padding:5px 8px;font-size:10px;color:var(--pink)"><strong>Contrato →</strong> dict fingerprint→ficha · data-team: dias_visto=6, hora_tipica=2</div>
+    </div>
+    <div class="card card-hover" style="border-color:var(--amber)">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px"><span class="tag" style="background:var(--amber-dim);color:var(--amber-t)">L5</span><code style="font-size:12px">score.py</code><span style="font-size:10px;color:var(--tt)">· auditoría humana aquí</span></div>
+      <p style="margin:0 0 6px;font-size:11px;color:var(--ts);line-height:1.5">5 componentes [0,1] × pesos de config → score 0-100 → banda. Columna explicacion por plantillas de reglas (no LLM). Los 5 s_* visibles en output para transparencia.</p>
+      <div style="background:var(--amber-dim);border-radius:6px;padding:5px 8px;font-size:10px;color:var(--amber-t)"><strong>Contrato →</strong> 277 incidentes con score, banda, banda_etiqueta, explicacion y 5 s_*</div>
+    </div>
+    <div class="card card-hover">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px"><span class="tag" style="background:var(--coral-dim);color:var(--coral)">L6</span><code style="font-size:12px">views.py</code></div>
+      <p style="margin:0 0 6px;font-size:11px;color:var(--ts);line-height:1.5">vista_triage (sre, score desc) + vista_composicion (cx: error_type, procesador, día, KPI %) + vista_patrones (crónicos ≥5 episodios colapsados en panel).</p>
+      <div style="background:var(--coral-dim);border-radius:6px;padding:5px 8px;font-size:10px;color:var(--coral)"><strong>Contrato →</strong> 3 DataFrames: triage (266 sre), composicion (11 cx), patrones (5 crónicos)</div>
+    </div>
+  </div>
+
+  <!-- REPORT + CONFIG + PIPELINE -->
+  <div class="grid g2 reveal delay-4">
+    <div class="card card-hover" style="grid-column:1/-1">
+      <div style="display:grid;grid-template-columns:1fr 1px 1fr;gap:16px;align-items:start">
+        <div>
+          <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px"><span class="tag" style="background:var(--cyan-dim);color:var(--cyan)">L7</span><code style="font-size:12px">report.py</code></div>
+          <p style="margin:0 0 6px;font-size:11px;color:var(--ts);line-height:1.5">Produce los 4 artefactos finales: <strong style="color:var(--tp)">incidents.csv</strong> (277 filas, 30 col), <strong style="color:var(--tp)">metrics.json</strong> (snapshot), <strong style="color:var(--tp)">digest.md</strong> (Gemini 2.5 Flash narra, degradable --no-llm), <strong style="color:var(--tp)">panel.html</strong> (autocontenido, vanilla JS).</p>
+          <div style="background:var(--cyan-dim);border-radius:6px;padding:5px 8px;font-size:10px;color:var(--cyan)"><strong>Contrato →</strong> 4 archivos en output/ · panel.html abre con doble clic sin internet</div>
+        </div>
+        <div style="background:var(--border);width:1px;align-self:stretch"></div>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--tp);margin-bottom:6px">Tolerancia a fallos</div>
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <div style="display:flex;gap:6px;align-items:flex-start"><span style="color:var(--green);font-weight:700;flex-shrink:0">✓</span><span style="font-size:11px;color:var(--ts)">Sin API key o con <code>--no-llm</code>: digest de plantilla determinista. Sigue siendo válido.</span></div>
+            <div style="display:flex;gap:6px;align-items:flex-start"><span style="color:var(--green);font-weight:700;flex-shrink:0">✓</span><span style="font-size:11px;color:var(--ts)">Timeout 30s + 1 reintento en Gemini — si falla, campos narrativos vacíos pero estructura intacta.</span></div>
+            <div style="display:flex;gap:6px;align-items:flex-start"><span style="color:var(--green);font-weight:700;flex-shrink:0">✓</span><span style="font-size:11px;color:var(--ts)">Gemini narra, nunca calcula. Los números vienen del CSV — el modelo solo escribe la frase.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card card-hover">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <div style="display:flex;gap:4px">
+          <div style="width:14px;height:14px;border-radius:50%;border:1.5px solid var(--tt);display:flex;align-items:center;justify-content:center"><div style="width:5px;height:5px;border-radius:50%;background:var(--amber)"></div></div>
+          <div style="width:14px;height:14px;border-radius:50%;border:1.5px solid var(--tt);display:flex;align-items:center;justify-content:center"><div style="width:5px;height:5px;border-radius:50%;background:var(--cyan)"></div></div>
+          <div style="width:14px;height:14px;border-radius:50%;border:1.5px solid var(--tt);display:flex;align-items:center;justify-content:center"><div style="width:5px;height:5px;border-radius:50%;background:var(--red)"></div></div>
+        </div>
+        <code style="font-size:12px">config.yaml</code>
+      </div>
+      <p style="margin:0 0 8px;font-size:11px;color:var(--ts);line-height:1.5">Todas las perillas de negocio en un archivo. Ops cambia un umbral sin tocar Python — el cambio es un commit auditable.</p>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <div style="display:flex;justify-content:space-between;font-size:10px;background:var(--bg3);border-radius:5px;padding:4px 7px"><span style="color:var(--ts)">ventana_rafaga_minutos</span><span style="color:var(--amber);font-weight:700">30</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;background:var(--bg3);border-radius:5px;padding:4px 7px"><span style="color:var(--ts)">recurrente_min_dias</span><span style="color:var(--amber);font-weight:700">3</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;background:var(--bg3);border-radius:5px;padding:4px 7px"><span style="color:var(--ts)">criticidad Pagos</span><span style="color:var(--amber);font-weight:700">1.0</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;background:var(--bg3);border-radius:5px;padding:4px 7px"><span style="color:var(--ts)">peso s_criticidad</span><span style="color:var(--amber);font-weight:700">0.30</span></div>
+      </div>
+    </div>
+
+    <div class="card card-hover" style="border:1.5px solid var(--cyan)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:22px">🏆</span>
+        <code style="font-size:12px;color:var(--cyan)">pipeline.py</code>
+        <span style="font-size:10px;color:var(--tt)">el orquestador</span>
+      </div>
+      <p style="margin:0 0 10px;font-size:11px;color:var(--ts);line-height:1.5">Un solo archivo encadena las 7 capas en orden. Toda la solución en un único comando.</p>
+      <div style="background:#060E1C;border-radius:8px;padding:10px 12px;margin-bottom:8px">
+        <div style="font-size:9px;color:var(--tt);margin-bottom:4px">Terminal</div>
+        <code style="font-size:12px;color:var(--cyan);background:none;padding:0">python pipeline.py \</code><br>
+        <code style="font-size:12px;color:var(--ts);background:none;padding:0">&nbsp;&nbsp;--input data/raw/alerts_combined.json</code>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <div style="font-size:10px;color:var(--ts);display:flex;gap:6px"><span style="color:var(--cyan);font-weight:700">✓</span>4 artefactos en output/ sin errores</div>
+        <div style="font-size:10px;color:var(--ts);display:flex;gap:6px"><span style="color:var(--cyan);font-weight:700">✓</span><code>--no-llm</code> degrada elegantemente</div>
+        <div style="font-size:10px;color:var(--ts);display:flex;gap:6px"><span style="color:var(--cyan);font-weight:700">✓</span>MD5 de incidents.csv idéntico entre corridas</div>
+        <div style="font-size:10px;color:var(--ts);display:flex;gap:6px"><span style="color:var(--cyan);font-weight:700">✓</span>245 tests verdes en pytest</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GOODHART -->
+  <div class="card reveal delay-4" style="margin-top:12px;background:var(--amber-dim);border:none">
+    <p style="margin:0;font-size:12px;color:var(--amber-t);line-height:1.6">🤖 <strong>Sobre construir esto con agentes:</strong> Todo este alcance fue posible orquestando agentes — sin eso, este proyecto no llega en este tiempo. Pero orquestar no es delegar: <strong>el agente escribe, el humano construye la lógica y audita la solución.</strong> En la capa de scoring, el agente ajustó el mecanismo para que un caso de referencia "cuadrara" doblando la fórmula — se detectó, se corrigió el principio, y un caso cambió de banda como consecuencia. Documentado en <code style="background:rgba(255,255,255,0.12);color:var(--amber)">decisiones.md D-10</code>.</p>
+  </div>
+</div>
+</section>
+
+<!-- ══════════════════════════════════════════════════
+     PÁGINA 7 — MÉTRICAS
+══════════════════════════════════════════════════ -->
+<section id="s6">
+<div class="section-inner">
+  <div class="reveal">
+    <div class="sec-header">
+      <div class="sec-icon" style="background:var(--amber-dim)">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EF9F27" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><path d="M6 11 L12 4 L18 11"/><line x1="6" y1="21" x2="18" y2="21"/></svg>
+      </div>
+      <div>
+        <div class="sec-eyebrow" style="color:var(--amber)">06</div>
+        <h2 class="sec-title">Métricas</h2>
+      </div>
+    </div>
+    <div class="accent-line"></div>
+  </div>
+
+  <div class="card-lead reveal delay-1" style="border-left:3px solid var(--amber)">
+    Las métricas existen para una sola razón: saber si el sistema está haciendo lo que prometió. Hay dos tipos — las que el pipeline calcula desde el día 1 (datos reales), y las que solo existen cuando hay humanos usándolo (datos simulados, marcados claramente). Sin la segunda categoría, no hay forma de saber si la herramienta cambió algo — que es exactamente el error de la solución anterior.
+  </div>
+
+  <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--tt);text-transform:uppercase;margin-bottom:10px" class="reveal delay-2">Disponibles hoy · calculadas del pipeline</div>
+
+  <div class="grid g3 reveal delay-2" style="margin-bottom:10px">
+    <div class="card card-hover">
+      <div class="label">Alertas crudas</div>
+      <div class="value">458</div>
+      <div class="sub">mensajes de Slack sin procesar — el problema visible</div>
+    </div>
+    <div class="card card-hover">
+      <div class="label">Incidentes</div>
+      <div class="value">277</div>
+      <div class="sub">episodios únicos — el dato accionable</div>
+    </div>
+    <div class="card card-hover tint-cyan">
+      <div class="label" style="color:var(--cyan)">Compresión</div>
+      <div class="value" style="color:var(--cyan)">39.5%</div>
+      <div class="sub">181 alertas eran repetición del mismo episodio</div>
+    </div>
+  </div>
+
+  <!-- RUIDO DOS DEFINICIONES -->
+  <div class="card reveal delay-2" style="margin-bottom:10px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#4A90D9" stroke-width="1.5" stroke-linecap="round"><path d="M4 14 L4 6 L9 3 L14 6 L14 14"/><line x1="4" y1="14" x2="14" y2="14"/><rect x="7" y="9" width="4" height="5"/></svg>
+      <div style="font-size:13px;font-weight:600;color:var(--tp)">Ruido — dos definiciones, dos historias distintas</div>
+    </div>
+    <div class="grid g2">
+      <div style="background:#0C1E35;border-radius:8px;padding:9px 11px">
+        <div style="font-size:11px;font-weight:700;color:#4A90D9;margin-bottom:4px">Ruido como compresión · 39.5%</div>
+        <p style="margin:0 0 5px;font-size:11px;color:var(--ts);line-height:1.5">Alertas que resultaron ser la misma incidencia repitiéndose en ventana de 30 min. Redundancia mecánica, pura y dura. Defendible sin supuestos.</p>
+        <div style="font-size:10px;color:#4A90D9;font-style:italic">"El mismo fuego gritó 4 veces — es 1 incidente"</div>
+      </div>
+      <div style="background:rgba(239,159,39,0.08);border-radius:8px;padding:9px 11px">
+        <div style="font-size:11px;font-weight:700;color:var(--amber-t);margin-bottom:4px">Ruido como enfermedad crónica</div>
+        <p style="margin:0 0 5px;font-size:11px;color:var(--ts);line-height:1.5">Fingerprints con ≥5 episodios en el período con patrón estable. No son ruido ignorable — son patrones estructurales con nombre y apellido.</p>
+        <div style="font-size:10px;color:var(--amber);font-style:italic">"Orchestrator lleva 42 episodios de 500s"</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCORE DISTRIBUCIÓN + P2 EXPLICADO -->
+  <div class="card reveal delay-3" style="margin-bottom:10px">
+    <div style="font-size:13px;font-weight:600;color:var(--tp);margin-bottom:10px">Distribución de bandas — y el P2 que no es un bug</div>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:7px">
+        <div style="background:var(--red-dim);border-radius:8px;padding:8px 14px;display:flex;align-items:center;gap:12px">
+          <div style="text-align:center;min-width:44px"><div style="font-size:22px;font-weight:700;color:var(--red)">16</div><div style="font-size:9px;color:var(--red-t)">6%</div></div>
+          <div><div style="font-size:12px;font-weight:700;color:var(--red-t)">P1 · Atiende ahora</div><div style="font-size:10px;color:var(--red-t)">≥70</div></div>
+        </div>
+        <div style="background:var(--amber-dim);border-radius:8px;padding:8px 14px;display:flex;align-items:center;gap:12px;border:1.5px dashed var(--amber)">
+          <div style="text-align:center;min-width:44px"><div style="font-size:22px;font-weight:700;color:var(--amber)">175</div><div style="font-size:9px;color:var(--amber-t)">63%</div></div>
+          <div><div style="font-size:12px;font-weight:700;color:var(--amber-t)">P2 · Revisa hoy</div><div style="font-size:10px;color:var(--amber-t)">40–69</div></div>
+        </div>
+        <div style="background:var(--bg3);border-radius:8px;padding:8px 14px;display:flex;align-items:center;gap:12px">
+          <div style="text-align:center;min-width:44px"><div style="font-size:22px;font-weight:700;color:var(--ts)">86</div><div style="font-size:9px;color:var(--tt)">31%</div></div>
+          <div><div style="font-size:12px;font-weight:700;color:var(--ts)">P3 · Informativo</div><div style="font-size:10px;color:var(--tt)">&lt;40</div></div>
+        </div>
+      </div>
+      <div style="background:var(--amber-dim);border-radius:8px;padding:10px 12px;border-left:3px solid var(--amber)">
+        <div style="font-size:11px;font-weight:700;color:var(--amber-t);margin-bottom:6px">⚠️ ¿Por qué P2 es 63% y no es un bug?</div>
+        <p style="margin:0 0 6px;font-size:11px;color:var(--amber-t);line-height:1.5">El diagnóstico muestra que <strong>55 de los 175 P2 (31%) son dos fingerprints de Orchestrator</strong> con s_ficha=0 — completamente habituales. El score señala que <strong>el coordinador central tiene una enfermedad crónica estructural</strong>.</p>
+        <div style="font-size:11px;font-weight:700;color:var(--amber-t);margin-bottom:4px">¿Qué hacer con 175 "Revisa hoy"?</div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <div style="display:flex;gap:6px;font-size:10px;color:var(--amber-t)"><span style="font-weight:700">→</span><span><strong>Crónicos colapsados en el panel</strong>: 42 episodios de Orchestrator se ven como 1 expediente.</span></div>
+          <div style="display:flex;gap:6px;font-size:10px;color:var(--amber-t)"><span style="font-weight:700">→</span><span><strong>Perilla en config.yaml</strong>: si se decide que Orchestrator-500s es "ruido esperado", bajar su criticidad de 0.8 a 0.5. Un cambio, un commit.</span></div>
+          <div style="display:flex;gap:6px;font-size:10px;color:var(--amber-t)"><span style="font-weight:700">→</span><span><strong>El umbral 40 cae en un valle natural</strong> del histograma — moverlo sin diagnóstico mandaría enfermedades estructurales a "informativo".</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid g2 reveal delay-3" style="margin-bottom:10px">
+    <div class="card card-hover">
+      <div class="label">Mayor crónico activo</div>
+      <div style="font-size:18px;font-weight:700;color:var(--tp)">Orchestrator</div>
+      <div style="font-size:12px;color:var(--ts);margin:3px 0">42 episodios · score medio 44.5 · 500s diarios</div>
+      <div style="font-size:11px;color:var(--tt);line-height:1.4;margin-top:5px">El coordinador central fallando todos los días. El panel lo colapsó en 1 expediente — un canal de Slack nunca lo hubiera mostrado así.</div>
+    </div>
+    <div class="card card-hover tint-green">
+      <div class="label" style="color:var(--green-t)">KPI Payments · fondos insuficientes</div>
+      <div class="value" style="color:var(--green)">29.5%</div>
+      <div style="font-size:12px;color:var(--green-t);margin:3px 0">28 de 95 rechazos · canal cx</div>
+      <div style="font-size:11px;color:var(--green-t);line-height:1.4;margin-top:5px">El reporte mensual de Payments ya está aquí. Nadie conectó ese párrafo del brief con esa columna — hasta el EDA.</div>
+    </div>
+  </div>
+
+  <!-- ADOPCIÓN SIMULADA -->
+  <div style="font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--tt);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:10px" class="reveal delay-4">
+    Adopción · datos simulados
+    <span style="background:var(--purple-dim);color:var(--purple-t);font-size:10px;font-weight:700;padding:2px 10px;border-radius:999px">◆ Simulado — semana 1-2</span>
+  </div>
+
+  <div class="grid g2 reveal delay-4" style="margin-bottom:10px">
+    <div class="card dashed">
+      <div style="font-size:12px;font-weight:600;color:var(--tp);margin-bottom:6px">⏱️ Métrica norte · P1 a atendido</div>
+      <div style="font-size:26px;font-weight:700;color:var(--tp);margin-bottom:4px">38 min</div>
+      <div style="font-size:11px;color:var(--ts);margin-bottom:7px">vs baseline est. 6+ h sin la herramienta</div>
+      <p style="margin:0;font-size:11px;color:var(--ts);line-height:1.5">Esta métrica es el <strong style="color:var(--tp)">ownership hecho número</strong>: si nadie marca atendido, la métrica no existe — y eso también es información. La semana 0 mide el baseline sin la herramienta.</p>
+    </div>
+    <div class="card dashed">
+      <div style="font-size:12px;font-weight:600;color:var(--tp);margin-bottom:6px">⭐ % P1 atendidos — kill criteria</div>
+      <div style="font-size:26px;font-weight:700;color:var(--tp);margin-bottom:4px">81%</div>
+      <div style="font-size:11px;color:var(--ts);margin-bottom:7px">kill si &lt;60% sostenido a 90 días</div>
+      <p style="margin:0;font-size:11px;color:var(--ts);line-height:1.5">60% = el punto donde deja de ser un volado (50% = azar puro). Si a los 90 días el equipo usa la herramienta menos de 6 de cada 10 veces que hay un P1, <strong style="color:var(--red-t)">la herramienta se rediseña o se mata formalmente</strong>.</p>
+    </div>
+  </div>
+
+  <!-- MATRIZ DE CONFUSIÓN -->
+  <div class="card reveal delay-4" style="margin-bottom:10px">
+    <div style="font-size:13px;font-weight:600;color:var(--tp);margin-bottom:10px">Matriz de confusión — banda del score vs etiqueta humana</div>
+    <div style="display:grid;grid-template-columns:1fr 1px 1fr;gap:16px;align-items:start">
+      <table style="width:100%;border-collapse:separate;border-spacing:4px;font-size:11px">
+        <tr><td style="padding:4px"></td>
+          <td style="padding:6px;text-align:center;color:var(--ts);font-weight:600">Humano: ameritaba</td>
+          <td style="padding:6px;text-align:center;color:var(--ts);font-weight:600">Humano: ruido</td>
+        </tr>
+        <tr>
+          <td style="padding:6px;color:var(--ts);font-weight:600">Score P1/P2</td>
+          <td style="background:var(--green-dim);border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:700;color:var(--green)">7</div><div style="font-size:9px;color:var(--green-t)">✓ correcto</div></td>
+          <td style="background:var(--amber-dim);border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:700;color:var(--amber)">2</div><div style="font-size:9px;color:var(--amber-t)">falso positivo</div></td>
+        </tr>
+        <tr>
+          <td style="padding:6px;color:var(--ts);font-weight:600">Score P3</td>
+          <td style="background:var(--red-dim);border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:700;color:var(--red)">1</div><div style="font-size:9px;color:var(--red-t)">falso negativo ⚠️</div></td>
+          <td style="background:var(--green-dim);border-radius:8px;padding:12px;text-align:center"><div style="font-size:22px;font-weight:700;color:var(--green)">2</div><div style="font-size:9px;color:var(--green-t)">✓ ignorado bien</div></td>
+        </tr>
+      </table>
+      <div style="background:var(--border);width:1px;align-self:stretch"></div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="font-size:11px;font-weight:600;color:var(--tp);margin-bottom:2px">¿Por qué importa cada celda?</div>
+        <div style="background:var(--green-dim);border-radius:7px;padding:6px 8px;font-size:10px;color:var(--green-t)"><strong>7 correctos:</strong> el score funciona</div>
+        <div style="background:var(--amber-dim);border-radius:7px;padding:6px 8px;font-size:10px;color:var(--amber-t)"><strong>2 falsos positivos:</strong> genera fatiga. Señal para bajar peso de s_novedad.</div>
+        <div style="background:var(--red-dim);border-radius:7px;padding:6px 8px;font-size:10px;color:var(--red-t)"><strong>1 falso negativo ⚠️:</strong> el error más caro. La columna <code>etiqueta</code> del panel lo detecta retroactivamente.</div>
+        <div style="background:var(--green-dim);border-radius:7px;padding:6px 8px;font-size:10px;color:var(--green-t)"><strong>2 correctamente ignorados:</strong> ignorar bien también es éxito medible.</div>
+        <p style="margin:4px 0 0;font-size:10px;color:var(--tt);line-height:1.4">A 60 días, las etiquetas recalibran los pesos — ahí sí aplica un split tipo validación.</p>
+      </div>
+    </div>
+    <div style="font-size:9px;color:var(--tt);margin-top:6px;font-style:italic">Datos simulados · 12 incidentes etiquetados</div>
+  </div>
+
+  <!-- CONSULTAS SEMANALES -->
+  <div class="card dashed reveal delay-4">
+    <div style="font-size:12px;font-weight:600;color:var(--tp);margin-bottom:8px">👁️ Consultas semanales — métrica de éxito de composición (cx)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:center">
+      <div style="display:flex;gap:24px;align-items:baseline">
+        <div><span style="font-size:26px;font-weight:700;color:var(--pink)">12</span><span style="font-size:11px;color:var(--ts);margin-left:6px">Ops · vista triage</span></div>
+        <div><span style="font-size:26px;font-weight:700;color:var(--pink)">4</span><span style="font-size:11px;color:var(--ts);margin-left:6px">Tech · composición</span></div>
+      </div>
+      <p style="margin:0;font-size:11px;color:var(--ts);line-height:1.5">La vista cx no tiene "atendido" — los rechazos se <strong style="color:var(--tp)">gestionan como distribución</strong>. Su adopción se mide con un log manual ligero: ¿alguien abrió el reporte? ¿el KPI se citó en la reunión de Payments?</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ══════════════════════════════════════════════════
+     PÁGINA 8 — GESTIÓN
+══════════════════════════════════════════════════ -->
+<section id="s7">
+<div class="section-inner">
+  <div class="reveal">
+    <div class="sec-header">
+      <div class="sec-icon" style="background:var(--pink-dim)">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ED93B1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="3"/><circle cx="17" cy="7" r="3"/><path d="M3 21 C3 17 6 15 9 15 C12 15 15 17 15 21"/><path d="M15 15 C16.5 15 21 16 21 21"/></svg>
+      </div>
+      <div>
+        <div class="sec-eyebrow" style="color:var(--pink)">07</div>
+        <h2 class="sec-title">Gestión</h2>
+      </div>
+    </div>
+    <div class="accent-line"></div>
+  </div>
+
+  <div class="card-lead reveal delay-1" style="border-left:3px solid var(--pink)">
+    La herramienta anterior funcionó técnicamente y murió sin que nadie tomara la decisión de matarla. Este documento responde las cuatro preguntas que aquella nunca respondió: quién la usa, quién es dueño de qué, cómo se sabe si funciona, y qué pasa si no funciona.
+  </div>
+
+  <div class="grid g2 reveal delay-2" style="margin-bottom:12px">
+    <!-- STAKEHOLDERS -->
+    <div class="card card-hover">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:12px">
+        <div class="ibox" style="background:var(--pink-dim)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#ED93B1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="12" cy="6" r="2.5"/><path d="M1 16 C1 12.5 3.5 11 6 11 C8.5 11 11 12.5 11 16"/><path d="M11 11 C12.5 11 17 12 17 16"/></svg></div>
+        <div style="font-size:14px;font-weight:600;color:var(--tp)">Stakeholders</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:7px">
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <span class="tag" style="background:rgba(27,86,165,0.15);color:#4A90D9;flex-shrink:0">Tech</span>
+          <div style="font-size:11px;color:var(--ts);line-height:1.4">Consumidor primario de <strong style="color:var(--tp)">Triage (#sre)</strong>. Dueño de config.yaml. Consulta Composición cuando un pico sugiere causa técnica.</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <span class="tag" style="background:var(--green-dim);color:var(--green-t);flex-shrink:0">Ops</span>
+          <div style="font-size:11px;color:var(--ts);line-height:1.4">Consumidor primario de <strong style="color:var(--tp)">Composición (#cx)</strong> — KPI mensual de Payments. Consulta Triage como salud general.</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <span class="tag" style="background:var(--amber-dim);color:var(--amber-t);flex-shrink:0">Soporte</span>
+          <div style="font-size:11px;color:var(--ts);line-height:1.4">Contexto de validación. Su hipótesis del "80% es ruido" se trató como punto de partida, no como instrucción.</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <span class="tag" style="background:var(--purple-dim);color:var(--purple-t);flex-shrink:0">Dirección</span>
+          <div style="font-size:11px;color:var(--ts);line-height:1.4">Audita adopción a 30/60/90 días contra el kill criteria.</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:7px;padding:6px 9px;margin-top:2px;font-size:10px;color:var(--tt)">Un panel, dos vistas, dos audiencias — cada una hace una pregunta distinta. No hay una correspondencia 1:1 canal ↔ equipo.</div>
+      </div>
+    </div>
+
+    <!-- OWNERSHIP -->
+    <div class="card card-hover">
+      <div style="display:flex;align-items:center;gap:9px;margin-bottom:12px">
+        <div class="ibox" style="background:var(--green-dim)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#5DCAA5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="6" r="3"/><path d="M3 17 C3 13 6 11 9 11 C12 11 15 13 15 17"/><polyline points="12,3 14,5 17,2"/></svg></div>
+        <div style="font-size:14px;font-weight:600;color:var(--tp)">Ownership</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:7px">
+        <div style="background:var(--green-dim);border-radius:7px;padding:7px 9px">
+          <div style="font-size:10px;font-weight:700;color:var(--green-t);margin-bottom:2px">📋 Digest diario</div>
+          <div style="font-size:11px;color:var(--green)">Rotación semanal en Ops. Nada de "alguien debería revisar" — hay un nombre en el calendario.</div>
+        </div>
+        <div style="background:rgba(27,86,165,0.10);border-radius:7px;padding:7px 9px">
+          <div style="font-size:10px;font-weight:700;color:#4A90D9;margin-bottom:2px">⚙️ config.yaml</div>
+          <div style="font-size:11px;color:#4A90D9">Tech. Cada cambio es un commit con su razón documentada.</div>
+        </div>
+        <div style="background:var(--amber-dim);border-radius:7px;padding:7px 9px">
+          <div style="font-size:10px;font-weight:700;color:var(--amber-t);margin-bottom:2px">🏷️ Etiquetas del panel</div>
+          <div style="font-size:11px;color:var(--amber)">Ops (rotación). Exporta labels.csv periódicamente hasta que exista persistencia real.</div>
+        </div>
+        <div style="background:var(--pink-dim);border-radius:7px;padding:7px 9px">
+          <div style="font-size:10px;font-weight:700;color:var(--pink);margin-bottom:2px">📊 Auditoría 30/60/90</div>
+          <div style="font-size:11px;color:var(--pink)">Dirección. Mensual. Lee la tabla de adopción y decide contra el kill criteria.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEMANA 0 -->
+  <div class="card card-hover reveal delay-3" style="margin-bottom:12px">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <div class="ibox" style="background:var(--amber-dim)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#EF9F27" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="14" height="14" rx="2"/><line x1="6" y1="2" x2="6" y2="16"/><line x1="2" y1="7" x2="16" y2="7"/><polyline points="9,10 11,12 15,9"/></svg></div>
+      <div>
+        <div style="font-size:15px;font-weight:600;color:var(--tp)">Validación de semana 0 — lo que el dato no puede decir</div>
+        <div style="font-size:11px;color:var(--tt)">Una reunión con el equipo responde esto antes de confiar en los números</div>
+      </div>
+    </div>
+    <div class="grid g4">
+      <div style="background:var(--amber-dim);border-radius:8px;padding:8px 10px;text-align:center">
+        <div style="font-size:18px;margin-bottom:4px">🔍</div>
+        <div style="font-size:11px;font-weight:600;color:var(--amber-t);margin-bottom:4px">Criticidades</div>
+        <div style="font-size:10px;color:var(--amber);line-height:1.4">¿Qué son tesseract, Cerberus, Kraken? Inferidas del comportamiento — a confirmar.</div>
+      </div>
+      <div style="background:rgba(27,86,165,0.12);border-radius:8px;padding:8px 10px;text-align:center">
+        <div style="font-size:18px;margin-bottom:4px">⏱️</div>
+        <div style="font-size:11px;font-weight:600;color:#4A90D9;margin-bottom:4px">Baseline real</div>
+        <div style="font-size:10px;color:#4A90D9;line-height:1.4">¿Cuánto tarda HOY un P1 en recibir atención sin la herramienta?</div>
+      </div>
+      <div style="background:var(--purple-dim);border-radius:8px;padding:8px 10px;text-align:center">
+        <div style="font-size:18px;margin-bottom:4px">🎛️</div>
+        <div style="font-size:11px;font-weight:600;color:var(--purple-t);margin-bottom:4px">Perillas</div>
+        <div style="font-size:10px;color:var(--purple);line-height:1.4">Ventana 30 min, recurrencia 3 días — ¿coinciden con el ritmo real?</div>
+      </div>
+      <div style="background:var(--green-dim);border-radius:8px;padding:8px 10px;text-align:center">
+        <div style="font-size:18px;margin-bottom:4px">🎯</div>
+        <div style="font-size:11px;font-weight:600;color:var(--green-t);margin-bottom:4px">Meta real</div>
+        <div style="font-size:10px;color:var(--green);line-height:1.4">60% es el piso de kill. ¿Cuál es la meta de adopción real?</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ¿CÓMO SABER SI FUNCIONA? -->
+  <div class="card card-hover reveal delay-4">
+    <div style="font-size:15px;font-weight:600;color:var(--tp);margin-bottom:12px">⏰ ¿Cómo saber si funciona?</div>
+    <div class="grid g2">
+      <div style="display:flex;flex-direction:column;gap:7px">
+        <div style="font-size:10px;font-weight:700;color:var(--tt);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px">Cadencia de revisión</div>
+        <div style="display:flex;gap:8px;align-items:center"><span class="tag" style="background:var(--green-dim);color:var(--green-t)">Día 1</span><span style="font-size:11px;color:var(--ts)">Pipeline funcionando. Panel abierto. Baseline por medir.</span></div>
+        <div style="display:flex;gap:8px;align-items:center"><span class="tag" style="background:var(--amber-dim);color:var(--amber-t)">Día 30</span><span style="font-size:11px;color:var(--ts)">Primera lectura de adopción real. Solo observar.</span></div>
+        <div style="display:flex;gap:8px;align-items:center"><span class="tag" style="background:var(--purple-dim);color:var(--purple-t)">Día 60</span><span style="font-size:11px;color:var(--ts)">Primera recalibración de pesos con etiquetas acumuladas.</span></div>
+        <div style="display:flex;gap:8px;align-items:center"><span class="tag" style="background:var(--red-dim);color:var(--red-t)">Día 90</span><span style="font-size:11px;color:var(--ts)">Evaluación contra kill criteria. Si &lt;60% → rediseño o muerte formal.</span></div>
+      </div>
+      <div style="background:var(--bg3);border-radius:10px;padding:12px">
+        <div style="font-size:12px;font-weight:700;color:var(--tp);margin-bottom:10px">El ciclo que se sostiene solo</div>
+        <div style="display:flex;align-items:center;gap:0;flex-wrap:wrap;row-gap:6px">
+          <div style="background:var(--green-dim);border-radius:6px;padding:5px 9px;font-size:10px;color:var(--green-t);font-weight:600">Humano etiqueta</div>
+          <span style="font-size:14px;color:var(--tt);padding:0 5px">→</span>
+          <div style="background:rgba(27,86,165,0.12);border-radius:6px;padding:5px 9px;font-size:10px;color:#4A90D9;font-weight:600">Pesos se recalibran</div>
+          <span style="font-size:14px;color:var(--tt);padding:0 5px">→</span>
+          <div style="background:var(--amber-dim);border-radius:6px;padding:5px 9px;font-size:10px;color:var(--amber-t);font-weight:600">Score mejora</div>
+          <span style="font-size:14px;color:var(--tt);padding:0 5px">→</span>
+          <div style="background:var(--pink-dim);border-radius:6px;padding:5px 9px;font-size:10px;color:var(--pink);font-weight:600">Humano confía más</div>
+        </div>
+        <p style="margin:8px 0 0;font-size:11px;color:var(--tt);line-height:1.4;font-style:italic">"No se sostiene por disciplina — se sostiene porque usarlo lo mejora."</p>
+        <div style="margin-top:10px;background:var(--red-dim);border-radius:7px;padding:7px 9px">
+          <div style="font-size:10px;font-weight:700;color:var(--red-t);margin-bottom:2px">💀 Kill criteria — visible desde el día 1</div>
+          <div style="font-size:11px;color:var(--red-t);line-height:1.4">Si a 90 días el %P1 atendidos &lt;60% → rediseño o muerte formal. <strong>Esto no ocurrió la vez anterior.</strong></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ══════════════════════════════════════════════════
+     PÁGINA 9 — EVOLUCIÓN
+══════════════════════════════════════════════════ -->
+<section id="s8">
+<div class="section-inner">
+  <div class="reveal">
+    <div class="sec-header">
+      <div class="sec-icon" style="background:var(--purple-dim)">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#A29BFE" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4 C11 4 11 10 7 10 C11 10 11 16 7 16"/><path d="M17 4 C13 4 13 10 17 10 C13 10 13 16 17 16"/><line x1="7" y1="4" x2="17" y2="4"/><line x1="7" y1="16" x2="17" y2="16"/></svg>
+      </div>
+      <div>
+        <div class="sec-eyebrow" style="color:var(--purple)">08</div>
+        <h2 class="sec-title">Evolución</h2>
+      </div>
+    </div>
+    <div class="accent-line"></div>
+  </div>
+
+  <div class="card-lead reveal delay-1" style="border-left:3px solid var(--purple)">
+    El sistema está diseñado para crecer sin romperse — cada decisión de arquitectura tomada hoy es un punto de articulación hacia la siguiente versión. Nuevas fuentes, más historia, etiquetas acumuladas y mayor volumen no requieren reescribir el pipeline: requieren activar las piezas que ya están diseñadas pero deliberadamente no implementadas.
+  </div>
+
+  <!-- CÓMO EVOLUCIONA -->
+  <div class="card card-hover reveal delay-2" style="margin-bottom:12px">
+    <div style="font-size:14px;font-weight:600;color:var(--tp);margin-bottom:10px">¿Cómo evoluciona?</div>
+    <div class="grid g2">
+      <div style="display:flex;gap:9px;align-items:flex-start;background:var(--bg3);border-radius:8px;padding:8px 10px">
+        <div style="width:28px;height:28px;border-radius:7px;background:var(--green-dim);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#5DCAA5" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="2" width="10" height="10" rx="2"/><line x1="5" y1="7" x2="9" y2="7"/><line x1="7" y1="5" x2="7" y2="9"/></svg></div>
+        <div><div style="font-size:11px;font-weight:600;color:var(--tp)">Nueva fuente de alertas</div><div style="font-size:10px;color:var(--ts)">Un adaptador nuevo en normalize.py. Horas, no semanas.</div></div>
+      </div>
+      <div style="display:flex;gap:9px;align-items:flex-start;background:var(--bg3);border-radius:8px;padding:8px 10px">
+        <div style="width:28px;height:28px;border-radius:7px;background:rgba(27,86,165,0.15);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#4A90D9" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="5" r="2.5"/><path d="M2 13 C2 10 4.5 9 7 9 C9.5 9 12 10 12 13"/></svg></div>
+        <div><div style="font-size:11px;font-weight:600;color:var(--tp)">Equipo rota</div><div style="font-size:10px;color:var(--ts)">CLAUDE.md + docs/ + glosario.md son el onboarding completo.</div></div>
+      </div>
+      <div style="display:flex;gap:9px;align-items:flex-start;background:var(--bg3);border-radius:8px;padding:8px 10px">
+        <div style="width:28px;height:28px;border-radius:7px;background:var(--amber-dim);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#EF9F27" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="3"/><line x1="7" y1="1" x2="7" y2="3"/><line x1="7" y1="11" x2="7" y2="13"/><line x1="1" y1="7" x2="3" y2="7"/><line x1="11" y1="7" x2="13" y2="7"/></svg></div>
+        <div><div style="font-size:11px;font-weight:600;color:var(--tp)">Prioridades cambian</div><div style="font-size:10px;color:var(--ts)">Ajustar en config.yaml. Un commit con su razón — sin tocar Python.</div></div>
+      </div>
+      <div style="display:flex;gap:9px;align-items:flex-start;background:var(--bg3);border-radius:8px;padding:8px 10px">
+        <div style="width:28px;height:28px;border-radius:7px;background:var(--purple-dim);display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#A29BFE" stroke-width="1.5" stroke-linecap="round"><path d="M2 12 L5 7 L8 9 L12 3"/></svg></div>
+        <div><div style="font-size:11px;font-weight:600;color:var(--tp)">Recalibración de pesos</div><div style="font-size:10px;color:var(--ts)">A partir del día 60 con etiquetas — los pesos dejan de ser míos y pasan a ser del equipo.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCORE TRES GENERACIONES -->
+  <div class="card card-hover reveal delay-3" style="margin-bottom:12px">
+    <div style="font-size:14px;font-weight:600;color:var(--tp);margin-bottom:12px">⏰ El Score del futuro — tres generaciones</div>
+    <div class="grid g3">
+      <div style="border-radius:10px;overflow:hidden">
+        <div style="background:var(--green-dim);padding:8px 10px;display:flex;align-items:center;gap:7px">
+          <span class="tag" style="background:rgba(8,80,65,0.8);color:var(--green-t)">V0 · HOY</span>
+          <span style="font-size:11px;font-weight:700;color:var(--green-t)">Scoring manual</span>
+        </div>
+        <div style="background:var(--bg3);padding:9px 10px">
+          <div style="font-size:10px;font-weight:600;color:var(--tp);margin-bottom:5px">Combinación lineal declarada</div>
+          <div style="font-family:ui-monospace,monospace;font-size:10px;color:var(--green);background:var(--green-dim);border-radius:5px;padding:5px 7px;margin-bottom:7px">score = Σ wᵢ · xᵢ<br>pesos fijados a mano</div>
+          <div style="display:flex;flex-direction:column;gap:2px;font-size:10px;color:var(--ts)">
+            <div>✓ Sin entrenamiento</div>
+            <div>✓ 100% interpretable</div>
+            <div>✓ Funciona con n=458</div>
+            <div style="color:var(--tt)">· Pesos son opinión, no dato</div>
+          </div>
+          <div style="margin-top:7px;background:var(--green-dim);border-radius:5px;padding:4px 7px;font-size:9px;color:var(--green-t);font-style:italic">Como el FICO original de los años 80.</div>
+        </div>
+      </div>
+      <div style="border-radius:10px;overflow:hidden">
+        <div style="background:var(--purple-dim);padding:8px 10px;display:flex;align-items:center;gap:7px">
+          <span class="tag" style="background:rgba(60,52,137,0.8);color:var(--purple-t)">V1 · DÍA 60+</span>
+          <span style="font-size:11px;font-weight:700;color:var(--purple-t)">Regresión logística</span>
+        </div>
+        <div style="background:var(--bg3);padding:9px 10px">
+          <div style="font-size:10px;font-weight:600;color:var(--tp);margin-bottom:5px">Pesos aprendidos de etiquetas</div>
+          <div style="font-family:ui-monospace,monospace;font-size:10px;color:var(--purple);background:var(--purple-dim);border-radius:5px;padding:5px 7px;margin-bottom:7px">P(ameritaba) = σ(Σ wᵢ · xᵢ)<br>pesos ← optimizados por datos</div>
+          <div style="display:flex;flex-direction:column;gap:2px;font-size:10px;color:var(--ts)">
+            <div>✓ Mismos 5 features que v0</div>
+            <div>✓ Coeficientes legibles</div>
+            <div>✓ Funciona con ~200 etiquetas</div>
+          </div>
+          <div style="margin-top:7px;background:var(--purple-dim);border-radius:5px;padding:4px 7px;font-size:9px;color:var(--purple-t);font-style:italic">Los pesos dejan de ser míos y pasan a ser del equipo de Parco.</div>
+        </div>
+      </div>
+      <div style="border-radius:10px;overflow:hidden">
+        <div style="background:var(--amber-dim);padding:8px 10px;display:flex;align-items:center;gap:7px">
+          <span class="tag" style="background:rgba(99,56,6,0.8);color:var(--amber-t)">V2 · AÑO 1+</span>
+          <span style="font-size:11px;font-weight:700;color:var(--amber-t)">XGBoost / LightGBM</span>
+        </div>
+        <div style="background:var(--bg3);padding:9px 10px">
+          <div style="font-size:10px;font-weight:600;color:var(--tp);margin-bottom:5px">Interacciones no lineales</div>
+          <div style="font-family:ui-monospace,monospace;font-size:10px;color:var(--amber);background:var(--amber-dim);border-radius:5px;padding:5px 7px;margin-bottom:7px">score = f(x₁, x₂, x₁·x₂...)<br>~1,000–2,000 etiquetas</div>
+          <div style="display:flex;flex-direction:column;gap:2px;font-size:10px;color:var(--ts)">
+            <div>✓ Captura "pagos + novedad ≠ infra + novedad"</div>
+            <div style="color:var(--tt)">· SHAP values para explicabilidad</div>
+            <div style="color:var(--tt)">· Requiere científico de datos</div>
+          </div>
+          <div style="margin-top:7px;background:var(--amber-dim);border-radius:5px;padding:4px 7px;font-size:9px;color:var(--amber-t);font-style:italic">Log-reg sigue como capa de explicación — XGBoost rankea, log-reg narra.</div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:8px;background:var(--bg3);border-radius:7px;padding:7px 11px;display:flex;align-items:center;gap:10px">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#4FD1D9" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4.5" x2="7" y2="7"/><circle cx="7" cy="9.5" r="0.7" fill="#4FD1D9"/></svg>
+      <div style="font-size:11px;color:var(--ts)">El contrato del sistema no cambia entre versiones — incidents.csv sigue con las mismas 30 columnas, el panel con doble clic. Solo cambia quién decide los pesos.</div>
+    </div>
+  </div>
+
+  <!-- FASE 2 -->
+  <div class="card card-hover reveal delay-4">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <span style="font-size:20px">⭐</span>
+      <div>
+        <div style="font-size:14px;font-weight:600;color:var(--tp)">Fase 2 — diseñada, no implementada</div>
+        <div style="font-size:11px;color:var(--tt)">Decisiones explícitas de qué no se construyó y por qué, con su ruta futura</div>
+      </div>
+    </div>
+    <div class="grid g2">
+      <div style="background:var(--bg3);border-radius:8px;padding:9px 11px;border-left:2px solid var(--cyan)">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px"><span style="font-size:14px">🐳</span><div style="font-size:11px;font-weight:600;color:var(--tp)">Containerización</div></div>
+        <div style="font-size:10px;color:var(--ts);line-height:1.4">Stateless + config externa + un entrypoint. Un Dockerfile de 8 líneas lo lleva a Cloud Run Jobs o ECS — cuando el equipo lo necesite.</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:8px;padding:9px 11px;border-left:2px solid var(--amber)">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px"><span style="font-size:14px">⚡</span><div style="font-size:11px;font-weight:600;color:var(--tp)">Streaming con n8n</div></div>
+        <div style="font-size:10px;color:var(--ts);line-height:1.4">Pipeline batch → job calendarizado con n8n. En streaming, la tautología de s_ficha (D-06) se resuelve sola con ventana móvil.</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:8px;padding:9px 11px;border-left:2px solid var(--purple)">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px"><span style="font-size:14px">💾</span><div style="font-size:11px;font-weight:600;color:var(--tp)">Persistencia de etiquetas</div></div>
+        <div style="font-size:10px;color:var(--ts);line-height:1.4">Hoy: export manual a labels.csv. Fase 2: BigQuery/Firestore preservan etiquetas entre corridas — el panel deja de ser una fotografía regenerable.</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:8px;padding:9px 11px;border-left:2px solid var(--pink)">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px"><span style="font-size:14px">🎨</span><div style="font-size:11px;font-weight:600;color:var(--tp)">Panel v2</div></div>
+        <div style="font-size:10px;color:var(--ts);line-height:1.4">El panel actual es austero y funcional — deliberado. Un rediseño visual con paleta de marca se aborda cuando el v1 esté en uso real.</div>
+      </div>
+    </div>
+    <div style="margin-top:8px;background:var(--bg3);border-radius:7px;padding:6px 10px;display:flex;gap:8px;align-items:center">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#5DCAA5" stroke-width="1.5" stroke-linecap="round"><polyline points="2,6 4,9 10,3"/></svg>
+      <div style="font-size:10px;color:var(--tt)">Todo lo de fase 2 está documentado en <code>gestion.md</code> y <code>decisiones.md</code> — no es deuda técnica oculta, es una decisión consciente con su ruta trazada.</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ══════════════════════════════════════════════════
+     PÁGINA 10 — CIERRE
+══════════════════════════════════════════════════ -->
+<section id="s9" style="justify-content:center">
+<div class="section-inner">
+  <div class="reveal">
+    <div class="sec-header">
+      <div class="sec-icon" style="background:var(--cyan-dim)">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4FD1D9" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 L14.5 9 L22 9 L16 13.5 L18.5 21 L12 16.5 L5.5 21 L8 13.5 L2 9 L9.5 9 Z"/></svg>
+      </div>
+      <div>
+        <div class="sec-eyebrow" style="color:var(--cyan)">09</div>
+        <h2 class="sec-title">Cierre</h2>
+      </div>
+    </div>
+    <div class="accent-line"></div>
+  </div>
+
+  <div class="card-lead reveal delay-1" style="border-left:3px solid var(--cyan)">
+    Este proyecto no fue difícil por el código. Fue difícil por las decisiones. Cuatro apuestas que nadie pidió explícitamente, pero que determinaron que el resultado fuera este y no otro.
+  </div>
+
+  <!-- 4 CARDS DE APUESTAS -->
+  <div class="grid g2 reveal delay-2" style="margin-bottom:40px">
+    <div class="card card-hover" style="border-top:3px solid var(--cyan);position:relative;overflow:hidden">
+      <div style="position:absolute;top:8px;right:14px;font-size:40px;font-weight:800;color:rgba(79,209,217,0.10);line-height:1;pointer-events:none">01</div>
+      <div style="display:flex;align-items:center;gap:11px;margin-bottom:10px">
+        <div class="ibox" style="background:var(--cyan-dim)">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#4FD1D9" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="5"/><line x1="10" y1="13" x2="10" y2="18"/><line x1="7" y1="18" x2="13" y2="18"/></svg>
+        </div>
+        <div style="font-size:19px;font-weight:700;color:var(--tp)">Profundidad</div>
+      </div>
+      <p style="margin:0 0 12px;font-size:12px;color:var(--ts);line-height:1.6">Antes de escribir una línea de código, el proyecto se detuvo a interrogar cada campo del JSON. No había un manual — había que construirlo. Eso reveló tres periodos disjuntos, dos relojes rotos por canal, una jerarquía de cuatro niveles y un KPI de Payments escondido en una columna que nadie había conectado con el brief.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        <span class="tag" style="background:var(--cyan-dim);color:var(--cyan)">12 campos documentados</span>
+        <span class="tag" style="background:var(--cyan-dim);color:var(--cyan)">23 conditions catalogadas</span>
+        <span class="tag" style="background:var(--cyan-dim);color:var(--cyan)">el diccionario que nunca existió</span>
+      </div>
+    </div>
+
+    <div class="card card-hover" style="border-top:3px solid var(--coral);position:relative;overflow:hidden">
+      <div style="position:absolute;top:8px;right:14px;font-size:40px;font-weight:800;color:rgba(255,138,92,0.10);line-height:1;pointer-events:none">02</div>
+      <div style="display:flex;align-items:center;gap:11px;margin-bottom:10px">
+        <div class="ibox" style="background:var(--coral-dim)">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#FF8A5C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="16" height="12" rx="2"/><line x1="6" y1="2" x2="6" y2="5"/><line x1="14" y1="2" x2="14" y2="5"/><line x1="2" y1="10" x2="18" y2="10"/><line x1="7" y1="14" x2="13" y2="14"/></svg>
+        </div>
+        <div style="font-size:19px;font-weight:700;color:var(--tp)">Analogía</div>
+      </div>
+      <p style="margin:0 0 12px;font-size:12px;color:var(--ts);line-height:1.6">El score crediticio existe desde los años 80: muchas variables, pesos declarados, un número que cualquier persona puede leer y actuar. Nadie lo había aplicado a la priorización de alertas de infraestructura. Esa transferencia de dominio — del mundo financiero al mundo del monitoreo técnico — es lo que convirtió un problema de datos en un producto consumible por Ops sin contexto adicional.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        <span class="tag" style="background:var(--coral-dim);color:var(--coral)">score 0–100 auditable</span>
+        <span class="tag" style="background:var(--coral-dim);color:var(--coral)">P1 / P2 / P3 accionables</span>
+        <span class="tag" style="background:var(--coral-dim);color:var(--coral)">singular en alertas</span>
+      </div>
+    </div>
+
+    <div class="card card-hover" style="border-top:3px solid var(--purple);position:relative;overflow:hidden">
+      <div style="position:absolute;top:8px;right:14px;font-size:40px;font-weight:800;color:rgba(162,155,254,0.10);line-height:1;pointer-events:none">03</div>
+      <div style="display:flex;align-items:center;gap:11px;margin-bottom:10px">
+        <div class="ibox" style="background:var(--purple-dim)">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#A29BFE" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="4" cy="10" r="2"/><circle cx="10" cy="4" r="2"/><circle cx="16" cy="10" r="2"/><circle cx="10" cy="16" r="2"/><line x1="6" y1="10" x2="14" y2="10"/><line x1="10" y1="6" x2="10" y2="14"/></svg>
+        </div>
+        <div style="font-size:19px;font-weight:700;color:var(--tp)">Orquestación</div>
+      </div>
+      <p style="margin:0 0 12px;font-size:12px;color:var(--ts);line-height:1.6">Un pipeline de 7 capas donde cada archivo hace exactamente una cosa y le entrega un contrato claro a la siguiente. La orquestación no fue el reto más difícil — fue la consecuencia natural de haber tomado bien las decisiones anteriores. Y fue posible en este tiempo porque los agentes de IA escribieron el código mientras el criterio humano construyó la lógica y auditó cada capa.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        <span class="tag" style="background:var(--purple-dim);color:var(--purple-t)">7 capas · 245 tests verdes</span>
+        <span class="tag" style="background:var(--purple-dim);color:var(--purple-t)">4 artefactos en 1 comando</span>
+        <span class="tag" style="background:var(--purple-dim);color:var(--purple-t)">determinista · auditable</span>
+      </div>
+    </div>
+
+    <div class="card card-hover" style="border-top:3px solid var(--green);position:relative;overflow:hidden">
+      <div style="position:absolute;top:8px;right:14px;font-size:40px;font-weight:800;color:rgba(93,202,165,0.10);line-height:1;pointer-events:none">04</div>
+      <div style="display:flex;align-items:center;gap:11px;margin-bottom:10px">
+        <div class="ibox" style="background:var(--green-dim)">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#5DCAA5" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="8"/><polyline points="10,6 10,10 13,12"/></svg>
+        </div>
+        <div style="font-size:19px;font-weight:700;color:var(--tp)">Enfoque</div>
+      </div>
+      <p style="margin:0 0 12px;font-size:12px;color:var(--ts);line-height:1.6">Un solo problema, tiempo exclusivo, sin atajos. Los problemas complejos no se resuelven con velocidad — se resuelven con atención sostenida. Cada hallazgo del EDA, cada decisión documentada, cada número reconciliado existe porque hubo tiempo dedicado a entender antes de construir. Eso se nota en el resultado, y se nota en los documentos que quedan.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">14 decisiones documentadas</span>
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">6 supuestos explícitos</span>
+        <span class="tag" style="background:var(--green-dim);color:var(--green-t)">glosario que no existía</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- REMATE FINAL -->
+  <div class="reveal delay-3" style="display:flex;flex-direction:column;align-items:center;gap:22px;padding:44px 20px;background:var(--card);border-radius:var(--r-lg);border:1px solid var(--border);text-align:center">
+    <svg width="76" height="76" viewBox="0 0 100 100" style="filter:drop-shadow(0 0 16px rgba(79,209,217,0.4))">
+      <path d="M50 5 C75 5 95 25 95 50 C95 75 75 95 50 95 L5 95 L5 50 C5 25 25 5 50 5 Z" fill="#4FD1D9"/>
+      <path d="M50 28 C62 28 72 38 72 50 C72 62 62 72 50 72 L40 72 L40 86 L28 86 L28 28 Z M40 40 L40 60 L50 60 C56 60 60 56 60 50 C60 44 56 40 50 40 Z" fill="white"/>
+    </svg>
+    <div style="font-size:20px;font-weight:500;color:var(--tp);line-height:1.5;max-width:500px">Gracias por el espacio y el reto.</div>
+    <div style="font-size:32px;font-weight:800;color:var(--cyan);letter-spacing:0.05em">#parquiano</div>
+    <div style="font-size:12px;color:var(--tt)">Diego Flores · AI Engineer · parco-challenge · 2025</div>
+  </div>
+</div>
+</section>
+
+<!-- ══════════════════════════════════════════════════
+     JAVASCRIPT GLOBAL
+══════════════════════════════════════════════════ -->
+<script>
+// ── IntersectionObserver para animaciones de reveal ──
+const reveals = document.querySelectorAll('.reveal');
+const revealObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if(e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.12 });
+reveals.forEach(r => revealObserver.observe(r));
+
+// ── Progress bar ──
+const progressBar = document.getElementById('progress-bar');
+window.addEventListener('scroll', () => {
+  const pct = window.scrollY / (document.body.scrollHeight - window.innerHeight) * 100;
+  progressBar.style.width = pct + '%';
+});
+
+// ── Nav dots ──
+const sections = document.querySelectorAll('section');
+const dots = document.querySelectorAll('.nav-dot');
+
+dots.forEach((dot, i) => {
+  dot.addEventListener('click', () => {
+    sections[i].scrollIntoView({ behavior: 'smooth' });
+  });
+});
+
+const sectionObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if(e.isIntersecting) {
+      const id = e.target.id;
+      const idx = Array.from(sections).findIndex(s => s.id === id);
+      dots.forEach(d => d.classList.remove('active'));
+      if(idx >= 0) dots[idx].classList.add('active');
+    }
+  });
+}, { threshold: 0.5 });
+sections.forEach(s => sectionObserver.observe(s));
+</script>
+</body>
+</html>
