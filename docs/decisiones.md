@@ -367,3 +367,37 @@ condición crónica frente a una visita de urgencias.
 (reclasificaría problemas estructurales como ignorables); ocultar o eliminar
 los incidentes recurrentes de la vista (perdería la trazabilidad de episodios
 individuales, que sigue existiendo en `incidents.csv`).
+
+---
+
+## D-14 · El panel es una fotografía regenerable, no un estado incremental**
+
+**Decisión:** cada corrida de pipeline.py sobrescribe los 4 artefactos de
+output/ por completo, incluyendo panel.html. No existe fusión automática
+entre una corrida anterior (con atendido/etiqueta ya marcados por un humano)
+y una corrida nueva (con datos actualizados o config.yaml modificado).
+
+**Por qué:** el pipeline es determinista y sin estado por diseño (D-01 a D-08:
+cada capa es una función pura sobre la anterior). Mantener estado entre corridas
+— "recordar" qué se etiquetó en la versión anterior del panel — requeriría
+persistencia (base de datos o archivo de estado) que el alcance actual no
+contempla, y que mezclaría dos responsabilidades distintas: calcular el
+estado del sistema (pipeline) y acumular el juicio humano sobre ese estado
+(etiquetas).
+
+**La separación que sí existe hoy:** incidents.csv es la fuente de verdad
+recalculable; labels.csv (exportado manualmente desde el panel) es el registro
+de juicio humano, independiente de cualquier corrida específica. Si el pipeline
+corre de nuevo — porque llegó un JSON nuevo o se ajustó una perilla en
+config.yaml — el panel.html nuevo nace con las columnas atendido/etiqueta
+en blanco, pero el labels.csv anterior no se pierde: vive aparte, listo para
+fusionarse.
+
+**Qué se descartó (y por qué es fase 2, no v0):** persistencia automática
+(BigQuery/Firestore) que preserve etiquetas entre corridas y las fusione con
+incidents.csv nuevo. Construirlo en v0 habría significado diseñar un esquema
+de base de datos y un mecanismo de fusión (¿qué pasa si un incidente de la
+corrida anterior ya no existe en la nueva? ¿se conserva su etiqueta como
+histórico?) — preguntas de diseño legítimas que merecen su propia decisión
+documentada, no una respuesta apresurada en las horas finales. Vive en
+gestion.md §6 como la primera pieza de fase 2.
