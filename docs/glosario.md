@@ -114,7 +114,105 @@ channel  <-  policy  <-  condition  <-  service
 
 ---
 
-## 5 · Lo que el pipeline construye encima
+## 5 · Diccionario de `incidents.csv` — todas las columnas explicadas
+
+`incidents.csv` es la fuente de verdad del pipeline: cada fila es un incidente ya
+deduplicado, perfilado y scoreado. Tiene 35 columnas organizadas en cinco bloques.
+A continuación, cada columna con su tipo, su rango y una descripción sin jerga.
+
+---
+
+### 5.1 Identidad del incidente
+
+| Columna | Tipo | Valores | Qué significa |
+|---|---|---|---|
+| `incident_id` | string | `INC-0001` … `INC-0277` | Número de caso. Se asigna por orden cronológico de `inicio`: INC-0001 es el más antiguo del dataset. Determinista: el mismo input siempre produce el mismo ID. |
+| `channel` | string | `sre` · `monitoring-ops-cx` | Canal de Slack de origen. Decide la vista del panel y qué reloj se usó para el timestamp. |
+| `source` | string | `New Relic` · `PayPal Status` | Sistema que generó la alerta. Los 3 registros de PayPal Status no tienen priority, threshold ni policy. |
+| `vista` | string | `triage` · `composicion` | Vista del producto a la que pertenece el incidente. `triage` = incidentes de sre con score. `composicion` = rechazos de pago de cx, sin score individual. |
+| `fingerprint` | string | `Orchestrator::high request count with status 500` | La identidad del problema: `{service_normalizado}::{condition}`. La CURP del incidente. Dos incidentes con el mismo fingerprint son el mismo problema en distintos momentos. |
+
+---
+
+### 5.2 Servicio afectado
+
+| Columna | Tipo | Valores | Qué significa |
+|---|---|---|---|
+| `service` | string | 28 valores normalizados | Nombre del servicio **normalizado**: typos corregidos (`Princes` → `Princess`), instancias EC2 colapsadas a `infra`. El que aparece en el panel. |
+| `service_original` | string | nombre crudo del JSON | Nombre tal como llegó en la alerta. Para instancias infra (`i-058689...`) conserva el ID de servidor individual, que se pierde en `service`. |
+| `grupo_criticidad` | string | `pagos` · `nucleo` · `datos` · `infra` · `codename` · `web` | Categoría de criticidad del servicio, inferida del dato y configurable en `config.yaml`. Determina `s_criticidad`. Ver S-03 en `supuestos.md`: debe validarse con el equipo en semana 0. |
+| `condition` | string | 23 valores | La plantilla del problema que disparó la alerta. Mitad de la identidad del fingerprint. |
+| `policy` | string | 4 valores + null | Carpeta de New Relic que agrupa conditions relacionadas. Los 3 PayPal Status tienen null. |
+
+---
+
+### 5.3 Tiempo y tamaño del incidente
+
+| Columna | Tipo | Valores | Qué significa |
+|---|---|---|---|
+| `inicio` | datetime (tz-aware) | timestamp ISO con UTC-6 | Cuándo llegó la **primera alerta** del incidente a Slack. No es cuándo empezó el problema en el sistema — es cuándo New Relic lo notificó. |
+| `fin` | datetime (tz-aware) | timestamp ISO con UTC-6 | Cuándo llegó la **última alerta** del incidente. Si solo hay una alerta, `fin == inicio`. |
+| `duracion_min` | float | 0.0 … ~200 | `(fin − inicio)` en minutos. Mide la ventana de tiempo que duró la ráfaga de notificaciones, no necesariamente el tiempo que el sistema estuvo degradado. |
+| `n_alertas` | int | 1 … N | Cuántos **mensajes de Slack** (filas del JSON) conforman este incidente. Es el contador de notificaciones. |
+| `n_disparos` | int | 1 … N | Suma de la columna `incidents` de New Relic: cuántos disparos internos empaquetó cada mensaje. Siempre ≥ `n_alertas`. Los 3 PayPal Status se imputan como 1. |
+| `tasa_por_min` | float | > 0 | `n_disparos / max(duracion_min, 1.0)`. Disparos por minuto. Para incidentes de 0 min de duración, el denominador se sujeta a 1 para evitar división por cero. |
+
+---
+
+### 5.4 Señal original de New Relic
+
+| Columna | Tipo | Valores | Qué significa |
+|---|---|---|---|
+| `priority_max` | string | `high` · `critical` · null | La prioridad más alta que tuvo alguna alerta del incidente. `critical` gana sobre `high`. Los 3 PayPal Status son null. |
+| `tipo_regla` | string | `estatica` · `anomalia` | Cómo disparó la regla. `estatica`: cruzó un umbral fijo (ej. `>60%`). `anomalia`: New Relic comparó contra el comportamiento histórico propio y detectó desviación (`baseline`). |
+| `direccion` | string | `sobre` · `bajo` · `neutral` | Dirección del cruce. `sobre`: el valor subió por encima del umbral. `bajo`: cayó por debajo (degradación silenciosa). `neutral`: regla sin operador direccional. |
+
+---
+
+### 5.5 Score y banda
+
+| Columna | Tipo | Rango | Qué significa |
+|---|---|---|---|
+| `s_criticidad` | float | 0.0 – 1.0 | ¿Qué tan vital es el servicio afectado? Viene de la tabla `criticidad_servicios` en `config.yaml`. Pagos = 1.0, web = 0.4. |
+| `s_ficha` | float | 0.0 · 0.1 · 0.6 · 0.9 | ¿Se comporta como siempre? 0.9 = sin historial. 0.6 = hora atípica (inactivo en batch, ver L-01). 0.1 = ráfaga mayor a la típica. 0.0 = completamente habitual. |
+| `s_rafaga` | float | 0.0 – 1.0 | ¿Con qué intensidad insiste? `log2(n_disparos + 1) / log2(sat + 1)` donde `sat` = `score.rafaga.saturacion_disparos` en `config.yaml` (por defecto 31). Se satura en 1.0. |
+| `s_intensidad` | float | 0.30 · 0.50 · 0.75 · 1.00 | ¿Con qué fuerza gritó New Relic? null = 0.30, high = 0.50, critical estática = 0.75, critical anomalía = 1.00. |
+| `s_novedad` | float | 0.0 · 0.9 · 1.0 | ¿Es la primera vez que existe? 1.0 = nunca visto o visto un solo día. 0.9 = poco visto (< `recurrente_min_dias`). 0.0 = fingerprint establecido. |
+| `score` | int | 0 – 100 | `round(100 × Σ wᵢ·sᵢ)`. La suma ponderada de los 5 componentes. Pesos en `config.yaml`. |
+| `banda` | string | `P1` · `P2` · `P3` | Traducción del score a acción. P1 ≥ 70, P2 40–69, P3 < 40. |
+| `banda_etiqueta` | string | texto | La banda en lenguaje humano: "Atiende ahora", "Revisa hoy", "Informativo, no requiere acción". |
+| `explicacion` | string | texto | Frase generada por reglas que explica por qué el incidente recibió ese score. Se muestra en el panel y en el digest. |
+
+---
+
+### 5.6 Ficha de recurrencia (snapshot del historial)
+
+| Columna | Tipo | Valores | Qué significa |
+|---|---|---|---|
+| `es_recurrente` | bool | `True` · `False` | `True` si el fingerprint tiene `dias_visto >= recurrente_min_dias` (por defecto 3). Indica que existe ficha histórica estable. |
+| `dias_visto` | int | 1 … N | Cuántos días distintos apareció este fingerprint en el histórico del canal. Base de `s_novedad` y `s_ficha`. |
+
+---
+
+### 5.7 Columnas exclusivas de cx (canal monitoring-ops-cx)
+
+| Columna | Tipo | Valores | Qué significa |
+|---|---|---|---|
+| `error_type` | string · null | `INSUFFICIENT_FUNDS` · `CARD_DECLINED` · etc. | Código estructurado del rechazo de pago. Solo existe en cx — en sre es null por diseño (esquema distinto, no missingness). Dimensión principal de la vista composición. |
+| `procesador` | string · null | `Conekta` · `Mercadopago` · `PayPal` · null | Procesador de pago derivado de `error_message` por regex. Solo en cx. |
+
+---
+
+### 5.8 Columnas del panel (editables por el humano)
+
+| Columna | Tipo | Valores | Qué significa |
+|---|---|---|---|
+| `atendido` | datetime · null | timestamp o vacío | El operador marcó que actuó sobre este incidente. Se registra con timestamp. Es el sensor de la métrica norte: tiempo entre `inicio` y `atendido`. Vive en memoria del panel — se pierde si no se exporta (L-08). |
+| `etiqueta` | string · null | `ameritaba` · `ruido` · vacío | El juicio humano sobre si el score fue correcto. Acumula el ground truth necesario para recalibrar los pesos a partir del día 60 (L-02, `gestion.md`). |
+
+---
+
+## 6 · Lo que el pipeline construye encima
 
 | Componente | Qué es | Analogía |
 |---|---|---|
@@ -149,7 +247,7 @@ Bandas: **P1 ≥ 70 · P2 40–69 · P3 < 40**. Pesos heurísticos v0, declarado
 
 ---
 
-## 6 · Las dos vistas del producto (D-12)
+## 7 · Las dos vistas del producto (D-12)
 
 **Triage (`#sre`)** — la enfermera de urgencias: llegan pacientes distintos y
 hay que ordenarlos por gravedad. Decisión individual contra el reloj. Aquí
@@ -167,7 +265,7 @@ profundización + etiquetado).
 
 ---
 
-## 7 · Cómo se mide el éxito (gestión completa en `gestion.md`)
+## 8 · Cómo se mide el éxito (gestión completa en `gestion.md`)
 
 **Métrica norte:** tiempo entre que un incidente P1 comienza y se marca
 `atendido`. Como una alarma de incendios: lo que importa es cuántos minutos

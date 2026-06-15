@@ -142,11 +142,10 @@ implementación futura:
   manuales a `labels.csv`. La fusión de etiquetas históricas con corridas
   nuevas del pipeline (que regenera `panel.html` desde cero, D-?) es trabajo
   de esta fase.
-- **Modo continuo/streaming con n8n.** El pipeline batch está diseñado para
+- **Modo continuo/streaming.** El pipeline batch está diseñado para
   containerizarse trivialmente (sin estado, configuración externa en
   `config.yaml`, un solo entrypoint, degradación con `--no-llm`) y desplegarse
-  como job calendarizado (Cloud Run Jobs / ECS Scheduled Tasks) orquestado por
-  n8n — el mismo patrón ya usado en el proyecto Agentic WhatsApp. En streaming,
+  como job calendarizado (Cloud Run Jobs / ECS Scheduled Tasks) — el mismo patrón ya usado en el proyecto Agentic WhatsApp. En streaming,
   además, la limitación de D-06 (`horas_tipicas` tautológica en batch) se
   resuelve naturalmente: el perfil se construye con ventana móvil y se evalúa
   contra alertas nuevas que el perfil nunca vio.

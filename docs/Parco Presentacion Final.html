@@ -1288,15 +1288,15 @@
           <div>
             <div class="sec-eyebrow" style="color:var(--amber)">04</div>
             <h2 class="sec-title">Score</h2>
-            <div class="sec-subtitle">Del crédito a la Prioridad</div>
+            <div class="sec-subtitle">Del crédito a la Movilidad Prioritaria</div>
           </div>
         </div>
         <div class="accent-line"></div>
       </div>
 
       <div class="card-lead reveal delay-1" style="border-left:3px solid var(--amber)">
-        Un score crediticio no dice "parece confiable" — da un número compuesto de variables con peso declarado. El
-        Priority Score replica exactamente esa lógica: cinco variables con peso explícito, calculadas sobre cada
+        Un score crediticio no dice "parece confiable" — da un número compuesto de variables con peso declarado.<br> El
+        Priority Score replica exactamente esa lógica: 5 variables con peso explícito, calculadas sobre cada
         incidente, que traducen información técnica dispersa en un número único que cualquier persona puede leer y
         actuar. Sin cajas negras — cada punto es auditable componente por componente.
       </div>
@@ -1586,7 +1586,7 @@
       </div>
 
       <div class="card-lead reveal delay-1" style="border-left:3px solid var(--amber)">
-        Un DAG determinista de 7 capas donde cada archivo hace exactamente una cosa y entrega un contrato claro a la
+        Un flujo determinista de 7 capas donde cada archivo hace exactamente una cosa y entrega un contrato claro a la
         siguiente. Correr el pipeline dos veces produce el mismo resultado byte a byte. Cada perilla de negocio vive en
         <code>config.yaml</code>, no en el código.
       </div>
@@ -1839,13 +1839,13 @@
             </div>
             <div
               style="display:flex;justify-content:space-between;font-size:10px;background:var(--bg3);border-radius:5px;padding:4px 7px">
-              <span style="color:var(--ts)">criticidad Pagos</span><span
+              <span style="color:var(--ts)">criticidad (Pagos,...)</span><span
                 style="color:var(--amber);font-weight:700">1.0</span>
             </div>
             <div
               style="display:flex;justify-content:space-between;font-size:10px;background:var(--bg3);border-radius:5px;padding:4px 7px">
-              <span style="color:var(--ts)">peso s_criticidad</span><span
-                style="color:var(--amber);font-weight:700">0.30</span>
+              <span style="color:var(--ts)">pesos variables</span><span
+                style="color:var(--amber);font-weight:700">5</span>
             </div>
           </div>
         </div>
@@ -2055,7 +2055,7 @@
           <div class="value" style="color:var(--green)">29.5%</div>
           <div style="font-size:12px;color:var(--green-t);margin:3px 0">28 de 95 rechazos · canal cx</div>
           <div style="font-size:11px;color:var(--green-t);line-height:1.4;margin-top:5px">El reporte mensual de Payments
-            ya está aquí. Nadie conectó ese párrafo del brief con esa columna — hasta el EDA.</div>
+            ya está aquí. Al inicio no se conectó ese párrafo del brief con esa columna — hasta el EDA.</div>
         </div>
       </div>
 
@@ -2198,8 +2198,8 @@
 
       <div class="card-lead reveal delay-1" style="border-left:3px solid var(--pink)">
         La herramienta anterior funcionó técnicamente y murió sin que nadie tomara la decisión de matarla. Este
-        documento responde las cuatro preguntas que aquella nunca respondió: quién la usa, quién es dueño de qué, cómo
-        se sabe si funciona, y qué pasa si no funciona.
+        documento responde las cuatro preguntas que faltó responder: ¿quién la usa?, ¿quién es dueño de qué?, ¿cómo
+        se sabe si funciona?, ¿y qué pasa si no funciona?.</strong>
       </div>
 
       <div class="grid g2 reveal delay-2" style="margin-bottom:12px">
@@ -2594,9 +2594,9 @@
           </div>
           <div style="background:var(--bg3);border-radius:8px;padding:9px 11px;border-left:2px solid var(--amber)">
             <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px"><span style="font-size:14px">⚡</span>
-              <div style="font-size:11px;font-weight:600;color:var(--tp)">Streaming con n8n</div>
+              <div style="font-size:11px;font-weight:600;color:var(--tp)">Streaming</div>
             </div>
-            <div style="font-size:10px;color:var(--ts);line-height:1.4">Pipeline batch → job calendarizado con n8n. En
+            <div style="font-size:10px;color:var(--ts);line-height:1.4">Pipeline batch → job calendarizado. En
               streaming, la tautología de s_ficha (D-06) se resuelve sola con ventana móvil.</div>
           </div>
           <div style="background:var(--bg3);border-radius:8px;padding:9px 11px;border-left:2px solid var(--purple)">
@@ -2675,9 +2675,9 @@
             <div style="font-size:19px;font-weight:700;color:var(--tp)">Profundidad</div>
           </div>
           <p style="margin:0 0 12px;font-size:12px;color:var(--ts);line-height:1.6">Antes de escribir una línea de
-            código, el proyecto se detuvo a interrogar cada campo del JSON. No había un manual — había que construirlo.
+            código, el proyecto se detuvo a INTERROGAR cada campo del JSON. No había un manual — había que construirlo.
             Eso reveló tres periodos disjuntos, dos relojes rotos por canal, una jerarquía de cuatro niveles y un KPI de
-            Payments escondido en una columna que nadie había conectado con el brief.</p>
+            Payments escondido en una columna.</p>
           <div style="display:flex;flex-wrap:wrap;gap:5px">
             <span class="tag" style="background:var(--cyan-dim);color:var(--cyan)">12 campos documentados</span>
             <span class="tag" style="background:var(--cyan-dim);color:var(--cyan)">23 conditions catalogadas</span>
@@ -2704,8 +2704,9 @@
             <div style="font-size:19px;font-weight:700;color:var(--tp)">Analogía</div>
           </div>
           <p style="margin:0 0 12px;font-size:12px;color:var(--ts);line-height:1.6">El score crediticio existe desde los
-            años 80: muchas variables, pesos declarados, un número que cualquier persona puede leer y actuar. Nadie lo
-            había aplicado a la priorización de alertas de infraestructura. Esa transferencia de dominio — del mundo
+            años 80: muchas variables, pesos declarados, un número que cualquier persona puede leer y actuar. Pero no es
+            común aplicarlo
+            a la priorización de alertas de infraestructura. Esa transferencia de dominio — del mundo
             financiero al mundo del monitoreo técnico — es lo que convirtió un problema de datos en un producto
             consumible por Ops sin contexto adicional.</p>
           <div style="display:flex;flex-wrap:wrap;gap:5px">
@@ -2736,7 +2737,7 @@
           <p style="margin:0 0 12px;font-size:12px;color:var(--ts);line-height:1.6">Un pipeline de 7 capas donde cada
             archivo hace exactamente una cosa y le entrega un contrato claro a la siguiente. La orquestación no fue el
             reto más difícil — fue la consecuencia natural de haber tomado bien las decisiones anteriores. Y fue posible
-            en este tiempo porque los agentes de IA escribieron el código mientras el criterio humano construyó la
+            en este tiempo porque los agentes de IA escribieron código mientras el criterio humano construyó la
             lógica y auditó cada capa.</p>
           <div style="display:flex;flex-wrap:wrap;gap:5px">
             <span class="tag" style="background:var(--purple-dim);color:var(--purple-t)">7 capas · 245 tests
