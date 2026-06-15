@@ -103,7 +103,7 @@ channel  <-  policy  <-  condition  <-  service
 
 ### 4.4 Thresholds (operador + valor + unidad / ventana)
 
-| Ejemplo | En cristiano |
+| Ejemplo | Descripción |
 |---|---|
 | `>55/5min` | Más de 55 eventos en 5 minutos |
 | `>1800ms/5min` | Respuestas tardando más de 1.8 segundos, 5 minutos sostenido |
@@ -145,7 +145,7 @@ score = 100 × ( 0.30·s_criticidad   ¿qué tan vital es el órgano afectado?
 
 Bandas: **P1 ≥ 70 · P2 40–69 · P3 < 40**. Pesos heurísticos v0, declarados en
 `config.yaml`, recalibrables con etiquetas humanas a partir del día 60
-(`gestion.md` §4).
+(`gestion.md`).
 
 ---
 
@@ -182,7 +182,7 @@ baseline sin la herramienta.
 | Score: P3 | ❌ Falso negativo — el error caro | ✅ Ignorado correctamente — **ignorar bien también es éxito medible** |
 
 **Kill criteria:** si a 90 días el % de P1 atendidos está por debajo de 60%
-(el piso de "ya no es un volado", `gestion.md` §4), la herramienta se
+(el piso de "ya no es un volado", `gestion.md`), la herramienta se
 rediseña o se mata formalmente — el sistema carga su propia sentencia de
 muerte a la vista, el antídoto contra "dejó de usarse sin que nadie tomara la
 decisión".

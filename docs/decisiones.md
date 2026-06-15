@@ -11,7 +11,7 @@ para que alguien que no estuvo en la conversación entienda la decisión.
 `timestamp` (ISO). Nunca un solo campo para ambos canales.
 
 **Por qué:** el archivo `alerts_combined.json` concatena tres exports con
-personalidades distintas. En los segmentos de sre el ISO tiene desfases erráticos
+personalidades distintas. En los segmentos de sre el ISO tiene desfases
 de −17h a +6h respecto al epoch — el ISO fue editado a mano o proviene de un
 sistema con zona horaria mal configurada. En cx el epoch tiene gaps de exactamente
 5.0 minutos (metrónomo, no tráfico humano: 95 × 5 min = 7.9 h), es sintético.
@@ -28,7 +28,7 @@ y además es robusta a datos nuevos.
 **Decisión:** fingerprint = `(service_normalizado, condition)`. Los mensajes son
 23 plantillas exactas — basta con exact-match.
 
-**Por qué:** el análisis exploratorio (EDA §4) reveló que `condition → policy`
+**Por qué:** el análisis exploratorio (EDA) reveló que `condition → policy`
 es una relación 1-a-1 perfecta y los 23 valores son strings idénticos entre
 registros. No hay variación ortográfica en `condition`. Usar fuzzy matching,
 embeddings o un LLM para agrupar pagaría un costo enorme por un problema que

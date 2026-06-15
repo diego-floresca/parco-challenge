@@ -28,6 +28,12 @@ score:
     critical_estatica: 0.75   # umbral estático: mide distancia al límite, no anomalía
     critical_anomalia: 1.0    # umbral tipo baseline: New Relic certifica que es anómalo
     null: 0.3                 # PayPal Status y registros sin priority
+  rafaga:
+    saturacion_disparos: 31   # n_disparos a partir del cual s_rafaga = 1.0 (log2(31+1)/divisor = 1.0)
+  novedad:
+    sin_historial: 1.0        # dias_visto <= 1 o sin perfil previo
+    poco_visto:    0.9        # 1 < dias_visto < recurrente_min_dias
+    conocido:      0.0        # fingerprint recurrente establecido
   boosts:
     direccion_bajo: 0.05      # reglas "<": degradación silenciosa (throughput cayendo)
 

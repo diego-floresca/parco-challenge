@@ -81,9 +81,15 @@ def _s_ficha(
     return 0.1  # mayor que lo habitual en este horario
 
 
-def _s_rafaga(n_disparos: int) -> float:
-    """Intensidad de la ráfaga: log2(n_disparos+1) / 5, tapado en 1.0."""
-    return min(1.0, math.log2(n_disparos + 1) / 5.0)
+def _s_rafaga(n_disparos: int, config: dict) -> float:
+    """Intensidad de la ráfaga: log2(n_disparos+1) / log2(sat+1), tapado en 1.0.
+
+    El punto de saturación (sat) viene de config.yaml (score.rafaga.saturacion_disparos).
+    Con sat=31: log2(32)=5, idéntico al divisor fijo anterior.
+    """
+    sat = config["score"]["rafaga"]["saturacion_disparos"]
+    divisor = math.log2(sat + 1)
+    return min(1.0, math.log2(n_disparos + 1) / divisor)
 
 
 def _s_intensidad(
@@ -108,12 +114,13 @@ def _s_intensidad(
 
 def _s_novedad(profile: dict | None, config: dict) -> float:
     """Novedad del fingerprint: más raro = más urgente."""
+    nov = config["score"]["novedad"]
     rec_min = config["pipeline"]["recurrente_min_dias"]
     if profile is None or profile["dias_visto"] <= 1:
-        return 1.0
+        return nov["sin_historial"]
     if profile["dias_visto"] < rec_min:
-        return 0.9
-    return 0.0
+        return nov["poco_visto"]
+    return nov["conocido"]
 
 
 def _boosts(direccion: str | None, config: dict) -> float:
@@ -217,7 +224,7 @@ def score(
 
         sc = _s_criticidad(row["grupo_criticidad"], config)
         sf = _s_ficha(profile, inicio_hour, int(row["n_alertas"]), config)
-        sr = _s_rafaga(int(row["n_disparos"]))
+        sr = _s_rafaga(int(row["n_disparos"]), config)
         si = _s_intensidad(row["priority_max"], row["tipo_regla"], config)
         sn = _s_novedad(profile, config)
 

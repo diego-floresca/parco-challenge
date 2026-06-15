@@ -99,17 +99,17 @@ class TestComponentes:
     def test_s_criticidad_default(self, config):
         assert _s_criticidad("desconocido", config) == 0.50
 
-    def test_s_rafaga_uno(self):
-        """n_disparos=1 -> log2(2)/5 = 0.2"""
-        assert abs(_s_rafaga(1) - 0.2) < 1e-9
+    def test_s_rafaga_uno(self, config):
+        """n_disparos=1 -> log2(2)/log2(32) = 0.2 con saturacion_disparos=31"""
+        assert abs(_s_rafaga(1, config) - 0.2) < 1e-9
 
-    def test_s_rafaga_grande(self):
-        """n_disparos=31 -> log2(32)/5 = 1.0 (tapado)"""
-        assert _s_rafaga(31) == 1.0
+    def test_s_rafaga_grande(self, config):
+        """n_disparos=31 -> log2(32)/log2(32) = 1.0 (saturación)"""
+        assert _s_rafaga(31, config) == 1.0
 
-    def test_s_rafaga_zero(self):
+    def test_s_rafaga_zero(self, config):
         """n_disparos=0 -> 0.0"""
-        assert _s_rafaga(0) == 0.0
+        assert _s_rafaga(0, config) == 0.0
 
     def test_s_intensidad_null(self, config):
         assert _s_intensidad(None, None, config) == 0.3

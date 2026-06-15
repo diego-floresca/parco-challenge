@@ -207,6 +207,46 @@ el modo con LLM aporta más valor.
 
 ---
 
+## L-13 · `horas_tipicas` no distingue frecuencia — una hora vista una vez pesa igual que una vista cien veces
+
+**Qué pasa:** `horas_tipicas` es un conjunto binario de horas enteras (0-23). Se construye
+así:
+
+```python
+horas = sorted({dt.hour for dt in inicio_series})
+```
+
+El set elimina duplicados: si un fingerprint disparó 10 veces a las 02h y 1 vez a las 03h,
+el resultado es `[2, 3]`. Ambas horas son indistinguibles para `_s_ficha` — las dos están
+"dentro del conjunto" y producen el mismo tratamiento.
+
+**Escenario concreto:** `Orchestrator::high request count with status 500` tiene 45 episodios,
+prácticamente todos a las 02h. Si en producción llega un nuevo episodio a las 03h (hora que
+ocurrió una única vez en el histórico), el score lo trata como **completamente habitual**
+(`s_ficha = 0.0`), igual que si llegara a las 02h. La rareza relativa de las 03h es invisible.
+
+**Por qué ocurre:** el set captura presencia, no frecuencia. Una hora que representa el 1%
+de los episodios y una que representa el 90% reciben el mismo trato en la rama de `_s_ficha`.
+
+**Impacto:** incidentes en horas marginalmente vistas (baja frecuencia histórica) no reciben
+el boost de `s_ficha = 0.6`. El score los trata como si fuera la hora más habitual del
+fingerprint. En la práctica esto subestima la urgencia de episodios que ocurren a deshoras
+infrecuentes pero no completamente nuevas.
+
+**Por qué no se corrigió en v0:** la alternativa — guardar la distribución de frecuencias
+por hora y comparar contra un umbral relativo — requiere suficientes episodios para ser
+estadísticamente estable. Con `n=2` o `n=3` incidentes por fingerprint (frecuente en este
+dataset de 458 alertas), cualquier umbral de frecuencia produce falsos positivos. El set
+binario es auditable y no introduce falsa precisión.
+
+**Ruta de resolución:** en producción streaming, con ventanas deslizantes de 30-90 días y
+volumen real, guardar `Counter(dt.hour for dt in inicio_series)` en el perfil y comparar
+`freq = hora_counts.get(hora, 0) / total` contra un umbral configurable en `config.yaml`
+(ej. `umbral_hora_atipica: 0.10`). Una hora con frecuencia relativa < 10% se trataría como
+atípica aunque esté en el histórico.
+
+---
+
 ## Resumen de impacto operativo
 
 | Limitación | Impacto en producción | Prioridad de resolución |
@@ -223,3 +263,4 @@ el modo con LLM aporta más valor.
 | L-10 · períodos disjuntos sre/cx | Bajo — limitación del dataset de entrada | Requiere nuevos datos |
 | L-11 · PayPal sin priority | Bajo — 3 registros, adaptador específico | Si aumentan los avisos |
 | L-12 · digest sin LLM es lista plana | Bajo — válido y accionable | N/A |
+| L-13 · horas_tipicas sin frecuencia | Medio — horas raras tratadas igual que horas dominantes | Al pasar a streaming |

@@ -202,10 +202,14 @@ def _call_gemini(
         model = genai.GenerativeModel(
             model_name=modelo,
             system_instruction=(
-                "Eres el narrador de un digest operativo. Recibes una tabla JSON de incidentes "
-                "ya calculados. Redacta SOLO la narrativa solicitada: contexto y consecuencia "
-                "probable en <=25 palabras por ítem, español neutro, sin inventar números ni "
-                "servicios que no estén en la tabla. Responde con JSON puro, sin markdown."
+                "Eres el narrador de un digest operativo. Recibes una tabla JSON con dos listas: "
+                "p1_incidents (incidentes críticos) y cronicos (patrones recurrentes). "
+                "Redacta SOLO la narrativa solicitada: contexto y consecuencia probable en "
+                "<=25 palabras por ítem, español neutro, sin inventar números ni servicios "
+                "que no estén en la tabla. "
+                "Responde ÚNICAMENTE con un JSON puro con esta estructura exacta, sin markdown:\n"
+                '{"narrativas_p1": {"<incident_id>": "<narrativa>", ...}, '
+                '"narrativas_cronicos": {"<fingerprint>": "<narrativa>", ...}}'
             ),
         )
 
@@ -443,6 +447,65 @@ def build_digest(
 # 4. panel.html
 # ---------------------------------------------------------------------------
 
+def _md_to_html(text: str) -> str:
+    """
+    Convierte el subconjunto de Markdown producido por build_digest a HTML.
+    Maneja: # h1, ## h2, - listas, **bold**, _italic_, párrafos y líneas vacías.
+    """
+    import html as _html_mod
+    import re as _re
+
+    def inline(s: str) -> str:
+        s = _re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", s)
+        s = _re.sub(r"(?<!\w)_(.+?)_(?!\w)", r"<em>\1</em>", s)
+        return s
+
+    lines = text.splitlines()
+    chunks: list[str] = []
+    in_ul = False
+
+    for raw in lines:
+        esc = _html_mod.escape(raw)
+
+        if esc.startswith("# "):
+            if in_ul:
+                chunks.append("</ul>")
+                in_ul = False
+            chunks.append(f'<h1 class="dg-h1">{inline(esc[2:])}</h1>')
+            continue
+
+        if esc.startswith("## "):
+            if in_ul:
+                chunks.append("</ul>")
+                in_ul = False
+            chunks.append(f'<h2 class="dg-h2">{inline(esc[3:])}</h2>')
+            continue
+
+        if esc.startswith("- "):
+            if not in_ul:
+                chunks.append('<ul class="dg-ul">')
+                in_ul = True
+            chunks.append(f"<li>{inline(esc[2:])}</li>")
+            continue
+
+        if not esc.strip():
+            if in_ul:
+                chunks.append("</ul>")
+                in_ul = False
+            chunks.append('<div class="dg-spacer"></div>')
+            continue
+
+        if in_ul:
+            chunks.append("</ul>")
+            in_ul = False
+        chunks.append(f'<p class="dg-p">{inline(esc)}</p>')
+
+    if in_ul:
+        chunks.append("</ul>")
+
+    return "\n".join(chunks)
+
+
 def build_panel(
     df_scored,
     df_patrones,
@@ -487,7 +550,7 @@ def build_panel(
     patrones_json  = _json.dumps(pat_records, ensure_ascii=False, default=str)
     cx_json        = _json.dumps(cx_data,     ensure_ascii=False)
     metrics_json   = _json.dumps(metrics,     ensure_ascii=False, default=str)
-    digest_escaped = digest.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    digest_html = _md_to_html(digest)
 
     bandas     = metrics.get("bandas", {})
     n_alertas  = metrics.get("input", {}).get("alertas_totales", 0)
@@ -513,7 +576,13 @@ def build_panel(
   .tab-btn.active {{ color: #1a1a2e; border-bottom-color: #1a1a2e; font-weight: 600; }}
   .tab-panel {{ display: none; padding: 16px; }}
   .tab-panel.active {{ display: block; }}
-  .digest-block {{ background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 16px; white-space: pre-wrap; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 13px; line-height: 1.6; max-height: 400px; overflow-y: auto; }}
+  .digest-block {{ background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 20px 24px; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 13px; line-height: 1.7; max-height: 480px; overflow-y: auto; }}
+  .dg-h1 {{ font-size: 15px; font-weight: 700; color: #1a1a2e; margin: 0 0 2px; }}
+  .dg-h2 {{ font-size: 13px; font-weight: 700; color: #1a1a2e; margin: 18px 0 6px; padding-bottom: 4px; border-bottom: 1px solid #e8e8e8; text-transform: uppercase; letter-spacing: 0.03em; }}
+  .dg-ul {{ margin: 0 0 4px 18px; padding: 0; }}
+  .dg-ul li {{ margin-bottom: 6px; }}
+  .dg-p {{ margin: 4px 0; color: #444; }}
+  .dg-spacer {{ height: 10px; }}
   .filters {{ display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }}
   .filters select, .filters input {{ padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }}
   .filters label {{ font-size: 13px; color: #555; }}
@@ -577,7 +646,7 @@ def build_panel(
 <!-- TAB: Digest -->
 <div id="tab-digest" class="tab-panel active">
   <p class="section-title">Resumen ejecutivo — generado {generado}</p>
-  <div class="digest-block">{digest_escaped}</div>
+  <div class="digest-block">{digest_html}</div>
 </div>
 
 <!-- TAB: Triage -->
