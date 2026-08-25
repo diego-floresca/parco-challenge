@@ -1,6 +1,6 @@
 # parco-challenge — Pipeline de inteligencia de alertas
 
-Un canal de Slack recibe 458 alertas crudas sin estructura ni prioridad; este pipeline las deduplicatea, las puntúa (score 0-100) y produce cuatro artefactos consumibles por Ops y Tech en dos minutos un lunes en la mañana.
+Un canal de Slack recibe 458 alertas crudas sin estructura ni prioridad; este pipeline las deduplica, las puntúa (score 0-100) y produce cuatro artefactos consumibles por Ops y Tech en dos minutos un lunes en la mañana.
 
 ## Setup
 
